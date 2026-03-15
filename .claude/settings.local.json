@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet:*)",
+      "Bash(node:*)",
+      "Bash(cd:*)",
+      "Bash(npm install:*)",
+      "Bash(npx:*)",
+      "Bash(npm config:*)"
+    ]
+  }
+}
