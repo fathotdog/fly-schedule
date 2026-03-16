@@ -4,6 +4,7 @@ export interface Semester {
   term: number;
   startDate: string;
   isCurrent: boolean;
+  schoolName: string;
 }
 
 export interface SchoolClass {
@@ -61,6 +62,8 @@ export interface Period {
   periodNumber: number;
   startTime: string;
   endTime: string;
+  isActivity: boolean;
+  activityName: string | null;
 }
 
 export interface HomeroomAssignment {
@@ -121,4 +124,10 @@ export interface TeacherScheduleResponse {
 export interface ConflictInfo {
   type: string;
   message: string;
+}
+
+export interface ImportResult {
+  created: number;
+  updated: number;
+  skipped: number;
 }

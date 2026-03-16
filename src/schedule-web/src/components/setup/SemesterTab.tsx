@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getSemesters, createSemester, deleteSemester, setCurrentSemester } from '@/api/client';
+import { getSemesters, createSemester, updateSemester, deleteSemester, setCurrentSemester } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Trash2, Star, Calendar } from 'lucide-react';
+import { Plus, Trash2, Star, Calendar, Pencil, Check, X } from 'lucide-react';
 import { useScheduleStore } from '@/store/useScheduleStore';
 
 export function SemesterTab() {
@@ -16,12 +16,23 @@ export function SemesterTab() {
   const [year, setYear] = useState(114);
   const [term, setTerm] = useState(1);
   const [startDate, setStartDate] = useState('');
+  const [schoolName, setSchoolName] = useState('');
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editSchoolName, setEditSchoolName] = useState('');
 
   const { data: semesters = [] } = useQuery({ queryKey: ['semesters'], queryFn: getSemesters });
 
   const createMut = useMutation({
-    mutationFn: () => createSemester({ academicYear: year, term, startDate }),
+    mutationFn: () => createSemester({ academicYear: year, term, startDate, schoolName }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['semesters'] }); setStartDate(''); },
+  });
+
+  const updateMut = useMutation({
+    mutationFn: ({ id, schoolName: sn }: { id: number; schoolName: string }) => {
+      const s = semesters.find(x => x.id === id)!;
+      return updateSemester(id, { academicYear: s.academicYear, term: s.term, startDate: s.startDate, schoolName: sn });
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['semesters'] }); setEditingId(null); },
   });
 
   const deleteMut = useMutation({
@@ -48,7 +59,11 @@ export function SemesterTab() {
           <CardDescription>設定學年度與學期起始日</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-4 items-end">
+          <div className="flex gap-4 items-end flex-wrap">
+            <div>
+              <Label>學校名稱</Label>
+              <Input value={schoolName} onChange={e => setSchoolName(e.target.value)} placeholder="例：○○國中" className="w-40" />
+            </div>
             <div>
               <Label>學年度</Label>
               <Input type="number" value={year} onChange={e => setYear(+e.target.value)} className="w-24" />
@@ -73,6 +88,7 @@ export function SemesterTab() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>學校名稱</TableHead>
                 <TableHead>學年度</TableHead>
                 <TableHead>學期</TableHead>
                 <TableHead>開學日</TableHead>
@@ -83,6 +99,30 @@ export function SemesterTab() {
             <TableBody>
               {semesters.map(s => (
                 <TableRow key={s.id}>
+                  <TableCell>
+                    {editingId === s.id ? (
+                      <div className="flex items-center gap-1">
+                        <Input
+                          value={editSchoolName}
+                          onChange={e => setEditSchoolName(e.target.value)}
+                          className="w-32 h-8"
+                        />
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateMut.mutate({ id: s.id, schoolName: editSchoolName })}>
+                          <Check className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingId(null)}>
+                          <X className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <span>{s.schoolName || '—'}</span>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingId(s.id); setEditSchoolName(s.schoolName); }}>
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    )}
+                  </TableCell>
                   <TableCell>{s.academicYear}</TableCell>
                   <TableCell>第{s.term}學期</TableCell>
                   <TableCell>{s.startDate}</TableCell>

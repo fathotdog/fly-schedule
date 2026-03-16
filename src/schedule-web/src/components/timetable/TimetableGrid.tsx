@@ -5,8 +5,7 @@ import { Plus, Minus, LayoutGrid } from 'lucide-react';
 import type { TimetableSlot } from '@/api/types';
 import { toast } from 'sonner';
 import axios from 'axios';
-
-const DAY_NAMES = ['週一', '週二', '週三', '週四', '週五'];
+import { DAY_NAMES } from '@/lib/constants';
 
 export function TimetableGrid() {
   const qc = useQueryClient();
@@ -64,8 +63,9 @@ export function TimetableGrid() {
 
   const slots = data?.slots ?? [];
 
+  const slotMap = new Map(slots.map(s => [`${s.dayOfWeek}-${s.periodId}`, s]));
   const getSlot = (day: number, periodId: number): TimetableSlot | undefined =>
-    slots.find(s => s.dayOfWeek === day && s.periodId === periodId);
+    slotMap.get(`${day}-${periodId}`);
 
   return (
     <div className="overflow-auto">
@@ -140,11 +140,9 @@ function SlotCell({ slot, onRemove, onSelectTeacher }: {
 function EmptyCell({ canAdd, onAdd }: { canAdd: boolean; onAdd: () => void }) {
   if (!canAdd) return <div className="h-full" />;
   return (
-    <div className="h-full flex items-center justify-center border border-dashed border-transparent hover:border-primary/30 rounded-lg">
-      <button onClick={onAdd}
-        className="p-2 rounded-full hover:bg-indigo-50 text-gray-300 hover:text-primary">
-        <Plus className="w-5 h-5" />
-      </button>
+    <div className="h-full flex items-center justify-center cursor-pointer hover:bg-indigo-50/50 rounded-lg"
+      onClick={onAdd}>
+      <Plus className="w-5 h-5 text-gray-300" />
     </div>
   );
 }

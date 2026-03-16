@@ -14,8 +14,8 @@ public static class PeriodEndpoints
         group.MapGet("/", async (int semesterId, ScheduleDbContext db) =>
             await db.Periods
                 .Where(p => p.SemesterId == semesterId)
-                .OrderBy(p => p.PeriodNumber)
-                .Select(p => new PeriodDto(p.Id, p.SemesterId, p.PeriodNumber, p.StartTime, p.EndTime))
+                .OrderBy(p => p.StartTime)
+                .Select(p => new PeriodDto(p.Id, p.SemesterId, p.PeriodNumber, p.StartTime, p.EndTime, p.IsActivity, p.ActivityName))
                 .ToListAsync());
 
         group.MapPost("/", async (int semesterId, CreatePeriodRequest req, ScheduleDbContext db) =>
@@ -25,12 +25,14 @@ public static class PeriodEndpoints
                 SemesterId = semesterId,
                 PeriodNumber = req.PeriodNumber,
                 StartTime = req.StartTime,
-                EndTime = req.EndTime
+                EndTime = req.EndTime,
+                IsActivity = req.IsActivity,
+                ActivityName = req.ActivityName
             };
             db.Periods.Add(period);
             await db.SaveChangesAsync();
             return Results.Created($"/api/semesters/{semesterId}/periods/{period.Id}",
-                new PeriodDto(period.Id, period.SemesterId, period.PeriodNumber, period.StartTime, period.EndTime));
+                new PeriodDto(period.Id, period.SemesterId, period.PeriodNumber, period.StartTime, period.EndTime, period.IsActivity, period.ActivityName));
         });
 
         group.MapPut("/{id:int}", async (int semesterId, int id, UpdatePeriodRequest req, ScheduleDbContext db) =>
@@ -40,8 +42,10 @@ public static class PeriodEndpoints
             period.PeriodNumber = req.PeriodNumber;
             period.StartTime = req.StartTime;
             period.EndTime = req.EndTime;
+            period.IsActivity = req.IsActivity;
+            period.ActivityName = req.ActivityName;
             await db.SaveChangesAsync();
-            return Results.Ok(new PeriodDto(period.Id, period.SemesterId, period.PeriodNumber, period.StartTime, period.EndTime));
+            return Results.Ok(new PeriodDto(period.Id, period.SemesterId, period.PeriodNumber, period.StartTime, period.EndTime, period.IsActivity, period.ActivityName));
         });
 
         group.MapDelete("/{id:int}", async (int semesterId, int id, ScheduleDbContext db) =>

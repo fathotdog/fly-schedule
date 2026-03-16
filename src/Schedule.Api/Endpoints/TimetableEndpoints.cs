@@ -31,6 +31,12 @@ public static class TimetableEndpoints
             return Results.Ok(new { conflicts, hasConflicts = conflicts.Count > 0 });
         });
 
+        group.MapGet("/export-pdf", async (int semesterId, int classId, TimetablePdfService pdfService) =>
+        {
+            var pdfBytes = await pdfService.GenerateClassTimetablePdfAsync(semesterId, classId);
+            return Results.File(pdfBytes, "application/pdf", "課表.pdf");
+        });
+
         // Delete slot (outside semester group for simpler URL)
         app.MapDelete("/api/timetable/slots/{id:int}", async (int id, TimetableService svc) =>
             await svc.DeleteSlotAsync(id) ? Results.NoContent() : Results.NotFound())

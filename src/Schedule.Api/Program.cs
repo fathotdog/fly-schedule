@@ -1,7 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using QuestPDF.Infrastructure;
 using Schedule.Api.Data;
 using Schedule.Api.Endpoints;
 using Schedule.Api.Services;
+
+QuestPDF.Settings.License = LicenseType.Community;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +13,8 @@ builder.Services.AddDbContext<ScheduleDbContext>(options =>
 
 builder.Services.AddScoped<ConflictDetectionService>();
 builder.Services.AddScoped<TimetableService>();
+builder.Services.AddScoped<TimetablePdfService>();
+builder.Services.AddScoped<ExcelService>();
 
 builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>

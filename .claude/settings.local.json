@@ -6,7 +6,9 @@
       "Bash(cd:*)",
       "Bash(npm install:*)",
       "Bash(npx:*)",
-      "Bash(npm config:*)"
+      "Bash(npm config:*)",
+      "Bash(gh auth:*)",
+      "Bash(grep:*)"
     ]
   }
 }

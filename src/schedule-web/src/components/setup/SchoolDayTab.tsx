@@ -5,8 +5,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { useState, useEffect } from 'react';
 import { CalendarCheck } from 'lucide-react';
-
-const DAY_NAMES = ['', '週一', '週二', '週三', '週四', '週五'];
+import { DAY_NAMES_1BASED as DAY_NAMES } from '@/lib/constants';
 
 export function SchoolDayTab() {
   const qc = useQueryClient();

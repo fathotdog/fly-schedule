@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Schedule.Api.Data;
 using Schedule.Api.Dtos;
 using Schedule.Api.Models;
+using Schedule.Api.Services;
 
 namespace Schedule.Api.Endpoints;
 
@@ -10,6 +11,21 @@ public static class TeacherEndpoints
     public static void MapTeacherEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/teachers").WithTags("Teachers");
+
+        group.MapGet("/export-excel", async (ExcelService excel) =>
+        {
+            var bytes = await excel.ExportTeachersAsync();
+            return Results.File(bytes,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "教師.xlsx");
+        });
+
+        group.MapPost("/import-excel", async (IFormFile file, ExcelService excel) =>
+        {
+            using var stream = file.OpenReadStream();
+            var result = await excel.ImportTeachersAsync(stream);
+            return Results.Ok(result);
+        }).DisableAntiforgery();
 
         group.MapGet("/", async (ScheduleDbContext db) =>
             await db.Teachers.Include(t => t.StaffTitle)

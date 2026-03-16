@@ -7,6 +7,7 @@ public class Semester
     public int Term { get; set; } // 1 or 2
     public DateOnly StartDate { get; set; }
     public bool IsCurrent { get; set; }
+    public string SchoolName { get; set; } = "";
 
     public ICollection<SchoolClass> Classes { get; set; } = [];
     public ICollection<SchoolDay> SchoolDays { get; set; } = [];

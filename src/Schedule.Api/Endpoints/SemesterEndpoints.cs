@@ -14,12 +14,12 @@ public static class SemesterEndpoints
         group.MapGet("/", async (ScheduleDbContext db) =>
             await db.Semesters
                 .OrderByDescending(s => s.AcademicYear).ThenByDescending(s => s.Term)
-                .Select(s => new SemesterDto(s.Id, s.AcademicYear, s.Term, s.StartDate, s.IsCurrent))
+                .Select(s => new SemesterDto(s.Id, s.AcademicYear, s.Term, s.StartDate, s.IsCurrent, s.SchoolName))
                 .ToListAsync());
 
         group.MapGet("/{id:int}", async (int id, ScheduleDbContext db) =>
             await db.Semesters.FindAsync(id) is { } s
-                ? Results.Ok(new SemesterDto(s.Id, s.AcademicYear, s.Term, s.StartDate, s.IsCurrent))
+                ? Results.Ok(new SemesterDto(s.Id, s.AcademicYear, s.Term, s.StartDate, s.IsCurrent, s.SchoolName))
                 : Results.NotFound());
 
         group.MapPost("/", async (CreateSemesterRequest req, ScheduleDbContext db) =>
@@ -28,7 +28,8 @@ public static class SemesterEndpoints
             {
                 AcademicYear = req.AcademicYear,
                 Term = req.Term,
-                StartDate = req.StartDate
+                StartDate = req.StartDate,
+                SchoolName = req.SchoolName
             };
             db.Semesters.Add(semester);
             await db.SaveChangesAsync();
@@ -51,10 +52,31 @@ public static class SemesterEndpoints
             foreach (var (num, start, end) in defaultPeriods)
                 db.Periods.Add(new Period { SemesterId = semester.Id, PeriodNumber = num, StartTime = start, EndTime = end });
 
+            // Auto-create default activity periods
+            var defaultActivities = new (string Name, TimeOnly Start, TimeOnly End)[]
+            {
+                ("晨間打掃", new(7, 40), new(7, 55)),
+                ("朝會&導師時間", new(7, 55), new(8, 30)),
+                ("課間活動", new(10, 10), new(10, 20)),
+                ("午餐、潔牙時間", new(12, 0), new(13, 20)),
+                ("整潔活動", new(15, 0), new(15, 10)),
+                ("放學", new(15, 55), new(16, 0)),
+            };
+            foreach (var (name, start, end) in defaultActivities)
+                db.Periods.Add(new Period
+                {
+                    SemesterId = semester.Id,
+                    PeriodNumber = 0,
+                    IsActivity = true,
+                    ActivityName = name,
+                    StartTime = start,
+                    EndTime = end
+                });
+
             await db.SaveChangesAsync();
 
             return Results.Created($"/api/semesters/{semester.Id}",
-                new SemesterDto(semester.Id, semester.AcademicYear, semester.Term, semester.StartDate, semester.IsCurrent));
+                new SemesterDto(semester.Id, semester.AcademicYear, semester.Term, semester.StartDate, semester.IsCurrent, semester.SchoolName));
         });
 
         group.MapPut("/{id:int}", async (int id, UpdateSemesterRequest req, ScheduleDbContext db) =>
@@ -65,9 +87,10 @@ public static class SemesterEndpoints
             semester.AcademicYear = req.AcademicYear;
             semester.Term = req.Term;
             semester.StartDate = req.StartDate;
+            semester.SchoolName = req.SchoolName;
             await db.SaveChangesAsync();
 
-            return Results.Ok(new SemesterDto(semester.Id, semester.AcademicYear, semester.Term, semester.StartDate, semester.IsCurrent));
+            return Results.Ok(new SemesterDto(semester.Id, semester.AcademicYear, semester.Term, semester.StartDate, semester.IsCurrent, semester.SchoolName));
         });
 
         group.MapPost("/{id:int}/set-current", async (int id, ScheduleDbContext db) =>
@@ -79,7 +102,7 @@ public static class SemesterEndpoints
             semester.IsCurrent = true;
             await db.SaveChangesAsync();
 
-            return Results.Ok(new SemesterDto(semester.Id, semester.AcademicYear, semester.Term, semester.StartDate, semester.IsCurrent));
+            return Results.Ok(new SemesterDto(semester.Id, semester.AcademicYear, semester.Term, semester.StartDate, semester.IsCurrent, semester.SchoolName));
         });
 
         group.MapDelete("/{id:int}", async (int id, ScheduleDbContext db) =>

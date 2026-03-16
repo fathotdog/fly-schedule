@@ -1,18 +1,19 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getCourses, createCourse, deleteCourse } from '@/api/client';
+import { getCourses, createCourse, deleteCourse, exportCoursesExcel, importCoursesExcel } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Trash2, BookOpen } from 'lucide-react';
+import { Plus, Trash2, BookOpen, Download, Upload } from 'lucide-react';
 
 export function CourseTab() {
   const qc = useQueryClient();
   const [name, setName] = useState('');
   const [color, setColor] = useState('#6366f1');
   const [requiresRoom, setRequiresRoom] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: courses = [] } = useQuery({ queryKey: ['courses'], queryFn: getCourses });
 
@@ -26,6 +27,20 @@ export function CourseTab() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['courses'] }),
   });
 
+  const importMut = useMutation({
+    mutationFn: importCoursesExcel,
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ['courses'] });
+      alert(`匯入完成：新增 ${result.created} 筆、更新 ${result.updated} 筆、跳過 ${result.skipped} 筆`);
+    },
+  });
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) importMut.mutate(file);
+    e.target.value = '';
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -37,6 +52,15 @@ export function CourseTab() {
           <CardDescription>定義可排入課表的課程</CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="flex gap-2 mb-4">
+            <Button variant="outline" size="sm" onClick={() => exportCoursesExcel()}>
+              <Download className="w-4 h-4 mr-1" /> 匯出 Excel
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+              <Upload className="w-4 h-4 mr-1" /> 匯入 Excel
+            </Button>
+            <input ref={fileInputRef} type="file" accept=".xlsx" className="hidden" onChange={handleImport} />
+          </div>
           <div className="flex gap-4 items-end">
             <div>
               <Label>課程名稱</Label>

@@ -3,8 +3,7 @@ import { getTeacherSchedule, getPeriods } from '@/api/client';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { User } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-
-const DAY_NAMES = ['週一', '週二', '週三', '週四', '週五'];
+import { DAY_NAMES } from '@/lib/constants';
 
 export function TeacherSchedulePanel() {
   const { currentSemesterId, selectedTeacherId } = useScheduleStore();
@@ -30,8 +29,8 @@ export function TeacherSchedulePanel() {
     );
   }
 
-  const getSlot = (day: number, periodId: number) =>
-    data.slots.find(s => s.dayOfWeek === day && s.periodId === periodId);
+  const slotMap = new Map(data.slots.map(s => [`${s.dayOfWeek}-${s.periodId}`, s]));
+  const getSlot = (day: number, periodId: number) => slotMap.get(`${day}-${periodId}`);
 
   return (
     <div>

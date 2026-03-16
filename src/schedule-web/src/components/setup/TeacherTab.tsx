@@ -1,18 +1,19 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getTeachers, getStaffTitles, createTeacher, deleteTeacher } from '@/api/client';
+import { getTeachers, getStaffTitles, createTeacher, deleteTeacher, exportTeachersExcel, importTeachersExcel } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Trash2, Users } from 'lucide-react';
+import { Plus, Trash2, Users, Download, Upload } from 'lucide-react';
 
 export function TeacherTab() {
   const qc = useQueryClient();
   const [name, setName] = useState('');
   const [staffTitleId, setStaffTitleId] = useState(1);
   const [maxPeriods, setMaxPeriods] = useState(20);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: teachers = [] } = useQuery({ queryKey: ['teachers'], queryFn: getTeachers });
   const { data: titles = [] } = useQuery({ queryKey: ['staffTitles'], queryFn: getStaffTitles });
@@ -27,6 +28,21 @@ export function TeacherTab() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['teachers'] }),
   });
 
+  const importMut = useMutation({
+    mutationFn: importTeachersExcel,
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ['teachers'] });
+      qc.invalidateQueries({ queryKey: ['staffTitles'] });
+      alert(`匯入完成：新增 ${result.created} 筆、更新 ${result.updated} 筆、跳過 ${result.skipped} 筆`);
+    },
+  });
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) importMut.mutate(file);
+    e.target.value = '';
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -38,6 +54,15 @@ export function TeacherTab() {
           <CardDescription>新增及管理教師資料</CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="flex gap-2 mb-4">
+            <Button variant="outline" size="sm" onClick={() => exportTeachersExcel()}>
+              <Download className="w-4 h-4 mr-1" /> 匯出 Excel
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+              <Upload className="w-4 h-4 mr-1" /> 匯入 Excel
+            </Button>
+            <input ref={fileInputRef} type="file" accept=".xlsx" className="hidden" onChange={handleImport} />
+          </div>
           <div className="flex gap-4 items-end">
             <div>
               <Label>姓名</Label>

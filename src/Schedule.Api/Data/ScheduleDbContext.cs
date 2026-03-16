@@ -59,7 +59,7 @@ public class ScheduleDbContext(DbContextOptions<ScheduleDbContext> options) : Db
         // Period
         modelBuilder.Entity<Period>(e =>
         {
-            e.HasIndex(p => new { p.SemesterId, p.PeriodNumber }).IsUnique();
+            e.HasIndex(p => new { p.SemesterId, p.PeriodNumber }).IsUnique().HasFilter("IsActivity = 0");
             e.HasOne(p => p.Semester).WithMany(s => s.Periods).HasForeignKey(p => p.SemesterId);
         });
 
