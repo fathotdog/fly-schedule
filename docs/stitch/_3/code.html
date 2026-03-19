@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Academic Architect | Advanced Scheduling Constraints</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "error": "#ba1a1a",
+              "surface-tint": "#2f53ce",
+              "outline-variant": "#c4c5d6",
+              "secondary-fixed": "#d5e3fc",
+              "on-surface": "#191c1e",
+              "on-background": "#191c1e",
+              "error-container": "#ffdad6",
+              "surface-bright": "#f7f9fb",
+              "inverse-surface": "#2d3133",
+              "tertiary": "#00413c",
+              "surface": "#f7f9fb",
+              "on-tertiary-fixed-variant": "#00504a",
+              "on-primary-fixed": "#001453",
+              "surface-container-lowest": "#ffffff",
+              "on-tertiary": "#ffffff",
+              "on-tertiary-container": "#7bd1c7",
+              "on-primary-container": "#b2bfff",
+              "inverse-on-surface": "#eff1f3",
+              "surface-container-high": "#e6e8ea",
+              "surface-container-highest": "#e0e3e5",
+              "on-secondary-container": "#57657a",
+              "surface-container": "#eceef0",
+              "secondary-fixed-dim": "#b9c7df",
+              "secondary-container": "#d5e3fc",
+              "outline": "#747685",
+              "surface-container-low": "#f2f4f6",
+              "inverse-primary": "#b7c4ff",
+              "on-error-container": "#93000a",
+              "secondary": "#515f74",
+              "on-surface-variant": "#444654",
+              "primary-container": "#1a43bf",
+              "primary": "#002c98",
+              "on-secondary": "#ffffff",
+              "tertiary-fixed-dim": "#80d5cb",
+              "primary-fixed": "#dde1ff",
+              "tertiary-container": "#005a54",
+              "surface-variant": "#e0e3e5",
+              "on-secondary-fixed-variant": "#3a485b",
+              "background": "#f7f9fb",
+              "surface-dim": "#d8dadc",
+              "tertiary-fixed": "#9cf2e8",
+              "on-primary-fixed-variant": "#0438b6",
+              "on-error": "#ffffff",
+              "on-secondary-fixed": "#0d1c2e",
+              "on-primary": "#ffffff",
+              "primary-fixed-dim": "#b7c4ff",
+              "on-tertiary-fixed": "#00201d"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-drag {
+            background: rgba(224, 227, 229, 0.8);
+            backdrop-filter: blur(20px);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #c4c5d6;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body selection:bg-primary-fixed-dim">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full flex justify-between items-center px-6 h-16 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-800/50 z-50">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100 font-headline">Academic Architect</span>
+<div class="relative hidden md:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm" data-icon="search">search</span>
+<input class="pl-10 pr-4 py-2 bg-surface-container-highest border-none rounded-xl text-sm w-64 focus:ring-2 focus:ring-primary/20 transition-all outline-none" placeholder="Search constraints..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors rounded-full relative">
+<span class="material-symbols-outlined text-slate-500" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors rounded-full">
+<span class="material-symbols-outlined text-slate-500" data-icon="help_outline">help_outline</span>
+</button>
+<div class="h-8 w-px bg-outline-variant/30 mx-2"></div>
+<button class="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors rounded-lg">
+<img alt="User profile avatar" class="w-8 h-8 rounded-full border border-outline-variant/20" data-alt="Close up of a professional male avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCc2z0pgj1xDsFb8raotcAfgtTA1M6sPfVSf1Aw-4m-WnIw5HcFTkLvcjVjb4HGNgeqbx2lXZe-XSK3ii51-v6bFdSq5OlNJm63KKRDRAdjdGuf5t-Cnf-DucMxBlhtetHEMGzhFOULCEMNw837tkUggQm3X03pDbrDze0SnhNNmXSOciqYXnrHQR9FmejGeS1PL7qOJLbZ9CSzk9FHSXijNuqK2CqBJneN9B_Nk1XdvVwcneujR9TJ8RRtFY3n-lR7zxtziTF83-s"/>
+<span class="text-sm font-medium text-slate-700">Settings</span>
+</button>
+</div>
+</nav>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full flex flex-col p-4 border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 w-64 pt-20 z-40">
+<div class="mb-8 px-2">
+<div class="flex items-center gap-3 mb-1">
+<div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined text-sm" data-icon="school">school</span>
+</div>
+<span class="text-lg font-black text-blue-800 dark:text-blue-300 font-headline">EduSchedule Pro</span>
+</div>
+<span class="text-xs text-on-surface-variant font-medium px-1">Fall Semester 2024</span>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2.5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:translate-x-1 transition-transform duration-200 font-manrope font-medium text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-blue-700 dark:text-blue-400 bg-white dark:bg-slate-800 shadow-sm rounded-lg hover:translate-x-1 transition-transform duration-200 font-manrope font-medium text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="account_tree">account_tree</span>
+                Management
+            </a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:translate-x-1 transition-transform duration-200 font-manrope font-medium text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="grid_view">grid_view</span>
+                Workspace
+            </a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:translate-x-1 transition-transform duration-200 font-manrope font-medium text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>
+                Timetables
+            </a>
+</nav>
+<div class="mt-auto pt-6 space-y-1">
+<button class="w-full flex items-center justify-center gap-2 py-3 bg-primary-container text-white rounded-xl mb-6 hover:opacity-90 transition-opacity font-bold text-sm">
+<span class="material-symbols-outlined text-sm" data-icon="add">add</span>
+                Create New Schedule
+            </button>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 font-manrope font-medium text-xs" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="ios_share">ios_share</span>
+                Export Data
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 font-manrope font-medium text-xs" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="history">history</span>
+                System Logs
+            </a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-64 pt-24 px-8 pb-12 min-h-screen">
+<header class="mb-10 flex justify-between items-end">
+<div>
+<nav class="flex items-center gap-2 text-xs font-medium text-on-surface-variant mb-3">
+<span>Management</span>
+<span class="material-symbols-outlined text-[10px]" data-icon="chevron_right">chevron_right</span>
+<span class="text-primary font-semibold">Constraint Rules</span>
+</nav>
+<h1 class="text-3xl font-extrabold font-headline text-on-surface tracking-tight">Scheduling Architecture</h1>
+<p class="text-on-surface-variant mt-2 max-w-2xl">Define the structural limits and academic priorities for the automated scheduling engine. Changes apply to the active Fall Semester 2024 draft.</p>
+</div>
+<div class="flex gap-3">
+<button class="px-5 py-2.5 border border-outline-variant/30 rounded-xl font-semibold text-sm hover:bg-surface-container-low transition-colors">Discard Draft</button>
+<button class="px-5 py-2.5 bg-gradient-to-br from-primary to-primary-container text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20">Validate &amp; Save</button>
+</div>
+</header>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-12 gap-6 items-start">
+<!-- Category Tabs / Left Sidebar Column -->
+<div class="col-span-12 lg:col-span-3 space-y-3">
+<button class="w-full flex items-center gap-4 p-4 rounded-xl bg-surface-container-lowest shadow-sm border-l-4 border-primary text-left transition-all">
+<div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+</div>
+<div>
+<div class="text-sm font-bold font-headline">Teacher Constraints</div>
+<div class="text-[10px] text-on-surface-variant font-medium">12 active rules</div>
+</div>
+</button>
+<button class="w-full flex items-center gap-4 p-4 rounded-xl bg-transparent hover:bg-surface-container-low text-left transition-all">
+<div class="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="menu_book">menu_book</span>
+</div>
+<div>
+<div class="text-sm font-bold font-headline">Subject Constraints</div>
+<div class="text-[10px] text-on-surface-variant font-medium">8 active rules</div>
+</div>
+</button>
+<button class="w-full flex items-center gap-4 p-4 rounded-xl bg-transparent hover:bg-surface-container-low text-left transition-all">
+<div class="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="settings_suggest">settings_suggest</span>
+</div>
+<div>
+<div class="text-sm font-bold font-headline">Global Optimization</div>
+<div class="text-[10px] text-on-surface-variant font-medium">5 active rules</div>
+</div>
+</button>
+<button class="w-full flex items-center gap-4 p-4 rounded-xl bg-transparent hover:bg-surface-container-low text-left transition-all border border-dashed border-outline-variant/50">
+<div class="w-10 h-10 rounded-lg flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+</div>
+<div class="text-sm font-bold font-headline">Add Category</div>
+</button>
+</div>
+<!-- Content Area - Teacher Constraints -->
+<div class="col-span-12 lg:col-span-9 space-y-6">
+<!-- Section Header -->
+<div class="flex items-center justify-between px-2">
+<h2 class="text-xl font-bold font-headline flex items-center gap-2">
+                        Teacher Workload Boundaries
+                        <span class="material-symbols-outlined text-primary text-lg" data-icon="info" style="font-variation-settings: 'FILL' 1;">info</span>
+</h2>
+<div class="flex gap-2">
+<span class="text-xs font-semibold text-tertiary px-3 py-1 bg-tertiary-container/30 rounded-full flex items-center gap-1">
+<span class="w-1.5 h-1.5 bg-tertiary rounded-full"></span> Hard Constraints
+                        </span>
+<span class="text-xs font-semibold text-secondary px-3 py-1 bg-secondary-container/30 rounded-full flex items-center gap-1">
+<span class="w-1.5 h-1.5 bg-secondary rounded-full"></span> Soft Preferences
+                        </span>
+</div>
+</div>
+<!-- Constraint Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Rule: Max Hours per Day -->
+<div class="p-6 bg-surface-container-lowest rounded-xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1.5 h-full bg-tertiary"></div>
+<div class="flex justify-between items-start mb-6">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="hourglass_top">hourglass_top</span>
+<h3 class="font-bold text-sm tracking-tight">Maximum Daily Load</h3>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-10 h-5 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<span class="text-xs font-medium text-on-surface-variant">Max active hours per day</span>
+<div class="flex items-center bg-surface-container-low rounded-lg px-2">
+<input class="w-12 bg-transparent border-none text-center font-bold text-primary focus:ring-0 p-1" type="number" value="6"/>
+<span class="text-[10px] font-bold text-on-surface-variant pr-1">HRS</span>
+</div>
+</div>
+<div class="h-2 bg-surface-container-low rounded-full overflow-hidden">
+<div class="h-full bg-primary w-2/3"></div>
+</div>
+<p class="text-[10px] text-on-surface-variant italic">Required to prevent teacher burnout and maintain lesson quality.</p>
+</div>
+</div>
+<!-- Rule: Consecutive Periods -->
+<div class="p-6 bg-surface-container-lowest rounded-xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1.5 h-full bg-tertiary"></div>
+<div class="flex justify-between items-start mb-6">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="link">link</span>
+<h3 class="font-bold text-sm tracking-tight">Consecutive Sessions</h3>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-10 h-5 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<span class="text-xs font-medium text-on-surface-variant">Limit back-to-back periods</span>
+<div class="flex items-center bg-surface-container-low rounded-lg px-2">
+<input class="w-12 bg-transparent border-none text-center font-bold text-primary focus:ring-0 p-1" type="number" value="4"/>
+<span class="text-[10px] font-bold text-on-surface-variant pr-1">LCN</span>
+</div>
+</div>
+<div class="grid grid-cols-8 gap-1">
+<div class="h-2 bg-primary rounded-full"></div>
+<div class="h-2 bg-primary rounded-full"></div>
+<div class="h-2 bg-primary rounded-full"></div>
+<div class="h-2 bg-primary rounded-full"></div>
+<div class="h-2 bg-error rounded-full opacity-30"></div>
+<div class="h-2 bg-surface-container-low rounded-full"></div>
+<div class="h-2 bg-surface-container-low rounded-full"></div>
+<div class="h-2 bg-surface-container-low rounded-full"></div>
+</div>
+<p class="text-[10px] text-on-surface-variant italic">Engine will force a break or room change after 4 consecutive slots.</p>
+</div>
+</div>
+<!-- Rule: Mandatory Breaks (Soft) -->
+<div class="p-6 bg-surface-container-lowest rounded-xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1.5 h-full bg-secondary"></div>
+<div class="flex justify-between items-start mb-6">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="coffee">coffee</span>
+<h3 class="font-bold text-sm tracking-tight">Morning Break Priority</h3>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-10 h-5 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+<div class="space-y-4">
+<div class="flex flex-col gap-2">
+<span class="text-xs font-medium text-on-surface-variant">Prefer break between 10:00 - 11:30 AM</span>
+<div class="flex items-center justify-between text-[10px] text-primary font-bold">
+<span>Soft Preference Strength: High</span>
+<span>85% Importance</span>
+</div>
+<input class="w-full h-1.5 bg-surface-container-low rounded-lg appearance-none cursor-pointer accent-primary" max="100" min="0" type="range" value="85"/>
+</div>
+</div>
+</div>
+<!-- Add Rule Placeholder -->
+<button class="flex flex-col items-center justify-center p-6 border-2 border-dashed border-outline-variant/30 rounded-xl hover:bg-surface-container-low transition-all group">
+<span class="material-symbols-outlined text-3xl text-outline-variant group-hover:text-primary mb-2" data-icon="add_circle">add_circle</span>
+<span class="text-xs font-bold text-on-surface-variant group-hover:text-primary">Add Constraint Rule</span>
+</button>
+</div>
+<!-- Subject Constraints Table (No-Line Approach) -->
+<div class="mt-8 bg-surface-container-lowest rounded-2xl overflow-hidden shadow-sm">
+<div class="p-6 border-b border-surface-container">
+<h3 class="font-bold font-headline text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="auto_awesome">auto_awesome</span>
+                            Subject Optimization Matrix
+                        </h3>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low">
+<th class="px-6 py-4 text-[10px] font-bold text-primary uppercase tracking-widest">Subject Name</th>
+<th class="px-6 py-4 text-[10px] font-bold text-primary uppercase tracking-widest">Priority Weight</th>
+<th class="px-6 py-4 text-[10px] font-bold text-primary uppercase tracking-widest">Morning Bias</th>
+<th class="px-6 py-4 text-[10px] font-bold text-primary uppercase tracking-widest">Lab Sessions</th>
+<th class="px-6 py-4 text-[10px] font-bold text-primary uppercase tracking-widest">Status</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container">
+<tr class="hover:bg-surface transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center text-red-700">
+<span class="material-symbols-outlined text-sm" data-icon="calculate">calculate</span>
+</div>
+<span class="text-xs font-bold">Advanced Mathematics</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-sm text-yellow-500" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm text-yellow-500" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm text-yellow-500" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm text-outline-variant" data-icon="star">star</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<span class="text-[10px] font-bold text-primary">High</span>
+<div class="flex-1 h-1 bg-surface-container-high w-16 rounded-full">
+<div class="h-full bg-primary w-[90%] rounded-full"></div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 text-xs font-medium text-on-surface-variant">0 per week</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 bg-tertiary-container/20 text-tertiary rounded-full text-[10px] font-bold">Active</span>
+</td>
+</tr>
+<tr class="bg-surface-container-low/30 hover:bg-surface transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-700">
+<span class="material-symbols-outlined text-sm" data-icon="science">science</span>
+</div>
+<span class="text-xs font-bold">Bio-Chemistry Lab</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-sm text-yellow-500" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm text-yellow-500" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm text-outline-variant" data-icon="star">star</span>
+<span class="material-symbols-outlined text-sm text-outline-variant" data-icon="star">star</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<span class="text-[10px] font-bold text-on-surface-variant">None</span>
+<div class="flex-1 h-1 bg-surface-container-high w-16 rounded-full">
+<div class="h-full bg-outline-variant w-[5%] rounded-full"></div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 text-xs font-medium text-on-surface-variant">2 per week</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 bg-tertiary-container/20 text-tertiary rounded-full text-[10px] font-bold">Active</span>
+</td>
+</tr>
+<tr class="hover:bg-surface transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-700">
+<span class="material-symbols-outlined text-sm" data-icon="history_edu">history_edu</span>
+</div>
+<span class="text-xs font-bold">World Literature</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-sm text-yellow-500" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm text-outline-variant" data-icon="star">star</span>
+<span class="material-symbols-outlined text-sm text-outline-variant" data-icon="star">star</span>
+<span class="material-symbols-outlined text-sm text-outline-variant" data-icon="star">star</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<span class="text-[10px] font-bold text-on-surface-variant">Low</span>
+<div class="flex-1 h-1 bg-surface-container-high w-16 rounded-full">
+<div class="h-full bg-primary w-[30%] rounded-full"></div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 text-xs font-medium text-on-surface-variant">0 per week</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 bg-error-container/20 text-error rounded-full text-[10px] font-bold">Inactive</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Global Optimization Settings -->
+<div class="p-8 bg-surface-container-highest/40 border border-dashed border-outline-variant/50 rounded-2xl">
+<div class="flex flex-col md:flex-row gap-8 items-start">
+<div class="flex-1">
+<h3 class="text-lg font-bold font-headline mb-2">Automated Engine Intelligence</h3>
+<p class="text-sm text-on-surface-variant leading-relaxed">Adjust how the scheduler handles complex conflicts. High strictness ensures perfect compliance but might result in unscheduled blocks. High flexibility prioritizes a full schedule over secondary preferences.</p>
+<div class="mt-6 flex items-center gap-4">
+<div class="px-4 py-2 bg-surface-container-lowest rounded-xl border border-outline-variant/10 flex items-center gap-3 shadow-sm">
+<span class="text-xs font-bold">Conflict Tolerance</span>
+<span class="px-2 py-0.5 bg-primary text-on-primary text-[10px] font-black rounded">LOW</span>
+</div>
+<div class="px-4 py-2 bg-surface-container-lowest rounded-xl border border-outline-variant/10 flex items-center gap-3 shadow-sm">
+<span class="text-xs font-bold">Teacher Gap Minimization</span>
+<span class="px-2 py-0.5 bg-tertiary text-on-tertiary text-[10px] font-black rounded">ENABLED</span>
+</div>
+</div>
+</div>
+<div class="w-full md:w-64 bg-surface-container-lowest p-5 rounded-2xl shadow-sm">
+<div class="text-[10px] font-bold text-primary uppercase mb-4 tracking-widest">Efficiency Target</div>
+<div class="flex items-center justify-center py-6">
+<div class="relative w-24 h-24 flex items-center justify-center">
+<svg class="absolute inset-0 w-full h-full -rotate-90">
+<circle class="text-surface-container" cx="48" cy="48" fill="transparent" r="42" stroke="currentColor" stroke-width="8"></circle>
+<circle class="text-primary" cx="48" cy="48" fill="transparent" r="42" stroke="currentColor" stroke-dasharray="264" stroke-dashoffset="66" stroke-width="8"></circle>
+</svg>
+<span class="text-2xl font-black text-on-surface">94<span class="text-xs">%</span></span>
+</div>
+</div>
+<button class="w-full py-2 bg-surface-container text-[10px] font-bold rounded-lg hover:bg-outline-variant/20 transition-colors uppercase">Recalculate Projections</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Contextual FAB - Restricted to Dashboard/Constraints main view -->
+<div class="fixed bottom-8 right-8 z-50">
+<button class="flex items-center gap-3 pl-4 pr-6 py-4 bg-primary text-white rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all">
+<span class="material-symbols-outlined" data-icon="play_arrow" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+<span class="font-bold tracking-tight">Run Optimization Draft</span>
+</button>
+</div>
+</body></html>

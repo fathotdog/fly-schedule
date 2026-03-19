@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Academic Architect | Scheduling Dashboard</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary-fixed": "#dde1ff",
+                        "outline": "#747685",
+                        "tertiary": "#00413c",
+                        "on-primary-fixed-variant": "#0438b6",
+                        "surface-tint": "#2f53ce",
+                        "inverse-primary": "#b7c4ff",
+                        "secondary": "#515f74",
+                        "secondary-fixed-dim": "#b9c7df",
+                        "on-primary-fixed": "#001453",
+                        "on-secondary-container": "#57657a",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-fixed": "#00201d",
+                        "tertiary-fixed-dim": "#80d5cb",
+                        "on-primary": "#ffffff",
+                        "primary-container": "#1a43bf",
+                        "outline-variant": "#c4c5d6",
+                        "error": "#ba1a1a",
+                        "surface-container-low": "#f2f4f6",
+                        "background": "#f7f9fb",
+                        "on-secondary": "#ffffff",
+                        "inverse-surface": "#2d3133",
+                        "error-container": "#ffdad6",
+                        "secondary-container": "#d5e3fc",
+                        "secondary-fixed": "#d5e3fc",
+                        "surface-container-high": "#e6e8ea",
+                        "tertiary-container": "#005a54",
+                        "on-error": "#ffffff",
+                        "inverse-on-surface": "#eff1f3",
+                        "primary-fixed-dim": "#b7c4ff",
+                        "on-secondary-fixed": "#0d1c2e",
+                        "surface-container": "#eceef0",
+                        "on-primary-container": "#b2bfff",
+                        "surface-container-highest": "#e0e3e5",
+                        "on-tertiary-fixed-variant": "#00504a",
+                        "primary": "#002c98",
+                        "surface-variant": "#e0e3e5",
+                        "tertiary-fixed": "#9cf2e8",
+                        "on-error-container": "#93000a",
+                        "surface-bright": "#f7f9fb",
+                        "on-tertiary": "#ffffff",
+                        "surface": "#f7f9fb",
+                        "on-tertiary-container": "#7bd1c7",
+                        "on-surface": "#191c1e",
+                        "on-surface-variant": "#444654",
+                        "on-secondary-fixed-variant": "#3a485b",
+                        "surface-dim": "#d8dadc",
+                        "on-background": "#191c1e"
+                    },
+                    fontFamily: {
+                        "headline": ["Manrope", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                        "label": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3 { font-family: 'Manrope', sans-serif; }
+    </style>
+</head>
+<body class="bg-background text-on-surface antialiased selection:bg-primary-fixed">
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full flex justify-between items-center px-6 h-16 bg-white/80 backdrop-blur-md border-b border-slate-200/50 z-40">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold tracking-tight text-slate-900">Academic Architect</span>
+<div class="hidden md:flex items-center gap-2 bg-surface-container-low px-3 py-1.5 rounded-xl border border-outline-variant/15">
+<span class="material-symbols-outlined text-outline text-sm">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-64 placeholder:text-outline" placeholder="Search courses or faculty..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-slate-500 hover:bg-slate-100 transition-colors rounded-lg">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-slate-500 hover:bg-slate-100 transition-colors rounded-lg">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+<div class="h-8 w-px bg-slate-200 mx-1"></div>
+<button class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-slate-100 transition-colors">
+<img alt="User Profile" class="w-8 h-8 rounded-full bg-slate-200" data-alt="User profile avatar of an educator" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBNU9PrKLK5PvUObD5NzS4wlruPUREWoSq8Bh9wxhkAl6GxXOh62igMc7GcqIA3osMjmQeXpu4nF5p12-1FGxrXDLUItxCYjkrHOb1-o55JCZTakdeOSOLVC7yCE_T41XLxV0xVabSuomKcyxvCGng4DKLx-zWZCFwaLYiTL-ksjs9WN1AsVJyRMRIhCgF6vPqWeFDpqMXiAwWQdYSrlPsuvLIy_bSBtZTaPa5lOrsz0KB0ZE-9lc43aFQeYvATUYqb400yWR1Dnjw"/>
+<span class="text-sm font-semibold text-slate-900">Settings</span>
+</button>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full flex flex-col p-4 border-r border-slate-200 w-64 pt-20 bg-slate-50">
+<div class="mb-8 px-2">
+<div class="flex items-center gap-3 mb-1">
+<div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-lg">school</span>
+</div>
+<div>
+<h2 class="text-lg font-black text-blue-800 leading-tight">EduSchedule Pro</h2>
+<p class="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Fall Semester 2024</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2.5 text-blue-700 bg-white shadow-sm rounded-lg font-semibold transition-all scale-95 duration-150" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-sm">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-slate-500 hover:text-slate-900 hover:translate-x-1 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">account_tree</span>
+<span class="text-sm">Management</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-slate-500 hover:text-slate-900 hover:translate-x-1 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">grid_view</span>
+<span class="text-sm">Workspace</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-slate-500 hover:text-slate-900 hover:translate-x-1 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="text-sm">Timetables</span>
+</a>
+</nav>
+<div class="mt-auto space-y-1 pt-4 border-t border-slate-200/50">
+<button class="w-full mb-4 py-3 px-4 bg-primary text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:bg-primary-container transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm">add</span>
+                Create New Schedule
+            </button>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 text-sm" href="#">
+<span class="material-symbols-outlined text-lg">ios_share</span>
+<span>Export Data</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 text-sm" href="#">
+<span class="material-symbols-outlined text-lg">history</span>
+<span>System Logs</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-64 pt-20 p-8 min-h-screen">
+<div class="max-w-7xl mx-auto space-y-8">
+<!-- Header Section -->
+<div class="flex justify-between items-end">
+<div>
+<h1 class="text-3xl font-extrabold text-on-surface tracking-tight mb-1">Scheduling Dashboard</h1>
+<p class="text-on-surface-variant font-medium">Real-time optimization and resource monitoring.</p>
+</div>
+<div class="flex gap-3">
+<div class="flex flex-col items-end">
+<span class="text-[10px] font-bold text-outline uppercase tracking-widest mb-1">Status</span>
+<span class="px-3 py-1 bg-tertiary-container text-on-tertiary-container rounded-full text-xs font-bold flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-on-tertiary-container"></span>
+                            ACTIVE OPTIMIZATION
+                        </span>
+</div>
+</div>
+</div>
+<!-- Bento Grid Stats & Progress -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+<!-- Overview Stats Column -->
+<div class="md:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-6">
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/10 flex flex-col justify-between min-h-[160px]">
+<div>
+<span class="material-symbols-outlined text-primary mb-2">task_alt</span>
+<h3 class="text-sm font-bold text-on-surface-variant">Scheduled Courses</h3>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="text-4xl font-extrabold text-on-surface">84%</span>
+<span class="text-xs font-bold text-tertiary">+2.4%</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/10 flex flex-col justify-between min-h-[160px]">
+<div>
+<span class="material-symbols-outlined text-secondary mb-2">pending_actions</span>
+<h3 class="text-sm font-bold text-on-surface-variant">Unassigned Hours</h3>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="text-4xl font-extrabold text-on-surface">124</span>
+<span class="text-xs font-bold text-outline">hrs left</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/10 flex flex-col justify-between min-h-[160px]">
+<div>
+<span class="material-symbols-outlined text-error mb-2">warning</span>
+<h3 class="text-sm font-bold text-on-surface-variant">Conflicts</h3>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="text-4xl font-extrabold text-error">08</span>
+<span class="text-xs font-bold text-error-container bg-error px-1.5 rounded text-white">CRITICAL</span>
+</div>
+</div>
+</div>
+<!-- Progress Bar Card -->
+<div class="md:col-span-4 bg-primary text-white p-6 rounded-xl shadow-xl shadow-primary/10 relative overflow-hidden">
+<div class="relative z-10">
+<h3 class="text-sm font-bold opacity-80 mb-6 uppercase tracking-widest">Active Scheduling Status</h3>
+<div class="mb-4">
+<div class="flex justify-between items-end mb-2">
+<span class="text-3xl font-extrabold">Processing</span>
+<span class="text-lg font-bold">84%</span>
+</div>
+<div class="w-full h-3 bg-white/20 rounded-full overflow-hidden">
+<div class="h-full bg-white rounded-full" style="width: 84%"></div>
+</div>
+</div>
+<p class="text-xs opacity-80 mt-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">calendar_month</span>
+                            Est. Completion: Sept 14, 2024
+                        </p>
+</div>
+<div class="absolute -right-8 -bottom-8 opacity-10">
+<span class="material-symbols-outlined text-[160px]" style="font-variation-settings: 'FILL' 1;">architecture</span>
+</div>
+</div>
+</div>
+<!-- Secondary Grid: Activity & Insights -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+<!-- Alerts & Notifications -->
+<div class="md:col-span-4 bg-surface-container-low rounded-xl p-1">
+<div class="p-5">
+<h2 class="text-lg font-bold text-on-surface mb-4">Conflict Alerts</h2>
+<div class="space-y-3">
+<!-- Alert Item -->
+<div class="bg-surface-container-lowest p-4 rounded-lg flex gap-4 border-l-4 border-error">
+<div class="w-10 h-10 rounded-full bg-error-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-error-container text-xl">person_off</span>
+</div>
+<div>
+<p class="text-sm font-bold text-on-surface">Teacher Overbooked</p>
+<p class="text-xs text-on-surface-variant">Dr. Aris Thorne: Over 40hrs/week in CS Dept.</p>
+<span class="text-[10px] text-outline font-medium mt-2 block">2 mins ago</span>
+</div>
+</div>
+<!-- Alert Item -->
+<div class="bg-surface-container-lowest p-4 rounded-lg flex gap-4 border-l-4 border-secondary">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-secondary-container text-xl">meeting_room</span>
+</div>
+<div>
+<p class="text-sm font-bold text-on-surface">Room Conflict</p>
+<p class="text-xs text-on-surface-variant">Lab 402: Concurrent booking for BIO101 and CHEM202.</p>
+<span class="text-[10px] text-outline font-medium mt-2 block">1 hour ago</span>
+</div>
+</div>
+<!-- Alert Item -->
+<div class="bg-surface-container-lowest p-4 rounded-lg flex gap-4 border-l-4 border-primary/20">
+<div class="w-10 h-10 rounded-full bg-primary-fixed flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-primary-fixed-variant text-xl">info</span>
+</div>
+<div>
+<p class="text-sm font-bold text-on-surface">Reminder</p>
+<p class="text-xs text-on-surface-variant">Final submission for Arts faculty due by EOD Friday.</p>
+<span class="text-[10px] text-outline font-medium mt-2 block">4 hours ago</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Resource Utilization Chart Area -->
+<div class="md:col-span-5 bg-surface-container-lowest rounded-xl border border-outline-variant/10 p-6">
+<div class="flex justify-between items-center mb-8">
+<h2 class="text-lg font-bold text-on-surface">Classroom Occupancy</h2>
+<button class="text-xs font-bold text-primary flex items-center gap-1">
+                            VIEW FULL REPORT <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+<!-- Mock Chart Visualization -->
+<div class="space-y-6">
+<div class="space-y-2">
+<div class="flex justify-between text-xs font-bold">
+<span class="text-on-surface-variant uppercase tracking-wider">Main Lecture Halls</span>
+<span class="text-on-surface">92%</span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden flex">
+<div class="h-full bg-primary rounded-full" style="width: 92%"></div>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between text-xs font-bold">
+<span class="text-on-surface-variant uppercase tracking-wider">Science Laboratories</span>
+<span class="text-on-surface">78%</span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden flex">
+<div class="h-full bg-primary/60 rounded-full" style="width: 78%"></div>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between text-xs font-bold">
+<span class="text-on-surface-variant uppercase tracking-wider">Computer Suites</span>
+<span class="text-on-surface">45%</span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden flex">
+<div class="h-full bg-primary/30 rounded-full" style="width: 45%"></div>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between text-xs font-bold">
+<span class="text-on-surface-variant uppercase tracking-wider">Seminar Rooms</span>
+<span class="text-on-surface">61%</span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden flex">
+<div class="h-full bg-primary/45 rounded-full" style="width: 61%"></div>
+</div>
+</div>
+</div>
+<!-- Asymmetric Decoration -->
+<div class="mt-8 pt-8 border-t border-slate-100 flex items-center justify-between">
+<div class="flex -space-x-2">
+<div class="w-8 h-8 rounded-full border-2 border-white bg-slate-200" data-alt="Resource user avatar"></div>
+<div class="w-8 h-8 rounded-full border-2 border-white bg-slate-300" data-alt="Resource user avatar"></div>
+<div class="w-8 h-8 rounded-full border-2 border-white bg-slate-400 text-[10px] flex items-center justify-center text-white font-bold">+12</div>
+</div>
+<p class="text-[10px] text-outline italic">Resource monitoring is live.</p>
+</div>
+</div>
+<!-- Quick Links & Actions -->
+<div class="md:col-span-3 space-y-6">
+<div class="bg-surface-container-highest p-6 rounded-xl flex flex-col h-full">
+<h2 class="text-sm font-bold text-on-surface-variant uppercase tracking-widest mb-6">Shortcuts</h2>
+<div class="grid grid-cols-1 gap-3">
+<button class="w-full flex items-center justify-between p-4 bg-surface-container-lowest rounded-lg hover:translate-x-1 transition-transform border border-outline-variant/10 text-left">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">view_quilt</span>
+<span class="text-sm font-bold">Workspace</span>
+</div>
+<span class="material-symbols-outlined text-outline text-sm">open_in_new</span>
+</button>
+<button class="w-full flex items-center justify-between p-4 bg-surface-container-lowest rounded-lg hover:translate-x-1 transition-transform border border-outline-variant/10 text-left">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">settings_applications</span>
+<span class="text-sm font-bold">Management</span>
+</div>
+<span class="material-symbols-outlined text-outline text-sm">open_in_new</span>
+</button>
+<button class="w-full flex items-center justify-between p-4 bg-surface-container-lowest rounded-lg hover:translate-x-1 transition-transform border border-outline-variant/10 text-left">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">print</span>
+<span class="text-sm font-bold">Report Center</span>
+</div>
+<span class="material-symbols-outlined text-outline text-sm">open_in_new</span>
+</button>
+</div>
+<div class="mt-auto pt-6">
+<div class="p-4 bg-primary-fixed/30 rounded-xl border border-primary-fixed">
+<p class="text-xs font-bold text-on-primary-fixed-variant mb-1">PRO TIP</p>
+<p class="text-[11px] text-on-primary-fixed-variant/80">Use 'Auto-Solve' in the Workspace to resolve teacher conflicts instantly.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Recent Activity Table-less List -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant/10 overflow-hidden">
+<div class="p-6 border-b border-slate-50 flex justify-between items-center">
+<h2 class="text-lg font-bold text-on-surface">Recent Schedule Modifications</h2>
+<div class="flex gap-2">
+<span class="px-3 py-1 bg-surface-container rounded text-xs font-semibold text-on-surface-variant">Filter: All Departments</span>
+</div>
+</div>
+<div class="divide-y divide-slate-50">
+<!-- Activity Row -->
+<div class="p-4 hover:bg-surface-container-low transition-colors flex items-center justify-between">
+<div class="flex items-center gap-4">
+<img alt="Avatar" class="w-10 h-10 rounded-full bg-slate-100" data-alt="User avatar of Marcus Chen" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDMpQBVaR5bRLRs_Vju2eNd0FXqyzv6XN_M54awrzuDPg-Gg2ut4UQ88LcxEK-5VSau4z1FUEQ3GNZWy6SxJ8nk5A1EvxQuXlW0YP_Ns4Lmru1oaZI54xkzRhdsFgzJykyAEIDNJqmk18JheTfGnKAPGgpzNddLxcipniqmoXky4_Cj5P6Z99aieXxKe1WKQmVu6rikIsxVbD5-QCjUoDqZqTiIdyKD7_i9HW1ySJjg646nKqXvs6IQXU0kodei4v84eMQockgpTpU"/>
+<div>
+<p class="text-sm font-bold text-on-surface">Marcus Chen <span class="font-medium text-on-surface-variant">updated CS204 schedule</span></p>
+<p class="text-[11px] text-outline">Dept: Computer Science • Room 201 → Room 502</p>
+</div>
+</div>
+<div class="text-right">
+<span class="text-xs font-bold text-on-surface">14:20</span>
+<p class="text-[10px] text-outline uppercase tracking-tight">Today</p>
+</div>
+</div>
+<!-- Activity Row -->
+<div class="p-4 hover:bg-surface-container-low transition-colors flex items-center justify-between">
+<div class="flex items-center gap-4">
+<img alt="Avatar" class="w-10 h-10 rounded-full bg-slate-100" data-alt="User avatar of Sarah Jenkins" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAn-EqF13WdgTD_owqdEhTdJtCAd-4u8AgWNyPmoWLJrU0A0cEOz5Idu4lbRgz6fonl_NebfbtpKF3wgKM7gD93YObCdlwzIv43-dJMAGWR8JBsFN1zM2-BvK7TEXlmGWxdXI9m48xD6ckBXKoiiynxlpKIyebCjTKIGAGFnPfiL8fEqVxAojo43bzDBkh_5crAnwPxgqokotzUrhzUH9zLP9tRW4s89s_JBYv8t_1osVFF1RqtIkOJ9o7YpxcCRdN08H1lxPdZz00"/>
+<div>
+<p class="text-sm font-bold text-on-surface">Sarah Jenkins <span class="font-medium text-on-surface-variant">resolved 3 conflicts</span></p>
+<p class="text-[11px] text-outline">Dept: Humanities • Faculty Workload Balancing</p>
+</div>
+</div>
+<div class="text-right">
+<span class="text-xs font-bold text-on-surface">11:05</span>
+<p class="text-[10px] text-outline uppercase tracking-tight">Today</p>
+</div>
+</div>
+<!-- Activity Row -->
+<div class="p-4 hover:bg-surface-container-low transition-colors flex items-center justify-between">
+<div class="flex items-center gap-4">
+<img alt="Avatar" class="w-10 h-10 rounded-full bg-slate-100" data-alt="User avatar of System Bot" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBfpgb74Q6NwW3ta1PcB7sRGcxF0e1Q_6jdRScSmZiRTqRJPMiZSz-7wu6Ww52twHgY6dl7xYu18Ub32ch-jLBmRMAi3mq9so7pzOf6zFeiuxjHjob_Vp8U0OikgZWET63HumaMdkYY14MUD-4qAIDKK6Cyzhxq-0Orll4-tU16TGf5fehwJff6km5c2vEmSUSlYvGS-WGelCL9fs0Li9PnPCbZm5AZ1ai5n43FCluSum_miwAjcX4_t93E8yz1pQ285yA_TTGriHA"/>
+<div>
+<p class="text-sm font-bold text-on-surface">System Auto-Optimizer <span class="font-medium text-on-surface-variant">applied batch changes</span></p>
+<p class="text-[11px] text-outline">Optimization Pass #402 • 15 slots assigned</p>
+</div>
+</div>
+<div class="text-right">
+<span class="text-xs font-bold text-on-surface">09:15</span>
+<p class="text-[10px] text-outline uppercase tracking-tight">Today</p>
+</div>
+</div>
+</div>
+<div class="p-4 bg-surface-container-low/30 text-center">
+<button class="text-sm font-bold text-primary hover:underline">View All Activity History</button>
+</div>
+</div>
+</div>
+</main>
+<!-- Floating Action Button for Workspace -->
+<button class="fixed bottom-8 right-8 w-14 h-14 bg-primary text-white rounded-full flex items-center justify-center shadow-2xl shadow-primary/40 hover:scale-110 active:scale-95 transition-all z-50">
+<span class="material-symbols-outlined text-2xl">auto_fix_high</span>
+</button>
+</body></html>
