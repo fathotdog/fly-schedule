@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getClasses } from '@/api/client';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { Label } from '@/components/ui/label';
+import { SearchSelect } from '@/components/ui/search-select';
 
 export function ClassSelector() {
   const { currentSemesterId, selectedClassId, setSelectedClassId } = useScheduleStore();
@@ -14,17 +15,14 @@ export function ClassSelector() {
 
   return (
     <div>
-      <Label className="text-xs text-gray-500 mb-1.5 block">班級</Label>
-      <select
-        value={selectedClassId ?? ''}
-        onChange={e => setSelectedClassId(e.target.value ? +e.target.value : null)}
-        className="flex h-9 w-full rounded-md border border-input bg-white px-3 py-1 text-sm shadow-card focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-      >
-        <option value="">選擇班級</option>
-        {classes.map(c => (
-          <option key={c.id} value={c.id}>{c.displayName}</option>
-        ))}
-      </select>
+      <Label className="text-xs text-on-surface-variant mb-1.5 block">班級</Label>
+      <SearchSelect
+        value={selectedClassId !== null ? String(selectedClassId) : "0"}
+        onValueChange={(val) => setSelectedClassId(val === "0" ? null : Number(val))}
+        placeholder="選擇班級"
+        items={[{ value: '0', label: '選擇班級' }, ...classes.map(c => ({ value: String(c.id), label: c.displayName }))]}
+        className="w-full shadow-card"
+      />
     </div>
   );
 }

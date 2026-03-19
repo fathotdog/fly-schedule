@@ -27,7 +27,7 @@ export function SchoolDayTab() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['schoolDays'] }),
   });
 
-  if (!currentSemesterId) return <p className="text-gray-500">請先選擇目前學期</p>;
+  if (!currentSemesterId) return <p className="text-on-surface-variant">請先選擇目前學期</p>;
 
   return (
     <Card>
@@ -43,7 +43,7 @@ export function SchoolDayTab() {
           {days.map((d, i) => (
             <label key={d.dayOfWeek}
               className={`flex items-center gap-3 p-4 rounded-lg border cursor-pointer
-                ${d.isActive ? 'border-primary bg-indigo-50' : 'border-gray-200 bg-gray-50'}`}>
+                ${d.isActive ? 'border-primary bg-secondary-container' : 'border-outline-variant/30 bg-surface-container-low'}`}>
               <input type="checkbox" checked={d.isActive}
                 onChange={e => {
                   const next = [...days];

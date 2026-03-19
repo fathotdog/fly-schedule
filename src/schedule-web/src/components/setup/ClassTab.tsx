@@ -31,7 +31,7 @@ export function ClassTab() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['classes'] }),
   });
 
-  if (!currentSemesterId) return <p className="text-gray-500">請先選擇目前學期</p>;
+  if (!currentSemesterId) return <p className="text-on-surface-variant">請先選擇目前學期</p>;
 
   return (
     <div className="space-y-6">

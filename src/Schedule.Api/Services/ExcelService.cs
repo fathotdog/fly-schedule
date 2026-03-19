@@ -177,4 +177,106 @@ public class ExcelService(ScheduleDbContext db)
         await db.SaveChangesAsync();
         return new ImportResult(created, updated, skipped);
     }
+
+    public async Task<byte[]> ExportCourseAssignmentsAsync(int semesterId)
+    {
+        var assignments = await db.CourseAssignments
+            .Include(ca => ca.Course)
+            .Include(ca => ca.Teacher)
+            .Include(ca => ca.Class)
+            .Where(ca => ca.SemesterId == semesterId)
+            .OrderBy(ca => ca.Class.GradeYear)
+            .ThenBy(ca => ca.Class.Section)
+            .ThenBy(ca => ca.Course.Name)
+            .ToListAsync();
+
+        using var workbook = new XLWorkbook();
+        var ws = workbook.Worksheets.Add("配課");
+
+        ws.Cell(1, 1).Value = "班級";
+        ws.Cell(1, 2).Value = "課程";
+        ws.Cell(1, 3).Value = "教師";
+        ws.Cell(1, 4).Value = "每週節數";
+        ws.Row(1).Style.Font.Bold = true;
+
+        for (var i = 0; i < assignments.Count; i++)
+        {
+            ws.Cell(i + 2, 1).Value = assignments[i].Class.DisplayName;
+            ws.Cell(i + 2, 2).Value = assignments[i].Course.Name;
+            ws.Cell(i + 2, 3).Value = assignments[i].Teacher.Name;
+            ws.Cell(i + 2, 4).Value = assignments[i].WeeklyPeriods;
+        }
+
+        ws.Columns().AdjustToContents();
+
+        using var ms = new MemoryStream();
+        workbook.SaveAs(ms);
+        return ms.ToArray();
+    }
+
+    public async Task<ImportResult> ImportCourseAssignmentsAsync(int semesterId, Stream stream)
+    {
+        using var workbook = new XLWorkbook(stream);
+        var ws = workbook.Worksheet(1);
+
+        var classes = await db.SchoolClasses.Where(c => c.SemesterId == semesterId).ToListAsync();
+        var courses = await db.Courses.ToListAsync();
+        var teachers = await db.Teachers.ToListAsync();
+        var existingAssignments = await db.CourseAssignments
+            .Where(ca => ca.SemesterId == semesterId)
+            .ToListAsync();
+
+        int created = 0, updated = 0, skipped = 0;
+
+        foreach (var row in ws.RowsUsed().Skip(1))
+        {
+            var className = row.Cell(1).GetString().Trim();
+            var courseName = row.Cell(2).GetString().Trim();
+            var teacherName = row.Cell(3).GetString().Trim();
+            var weeklyPeriods = (int)row.Cell(4).GetDouble();
+
+            if (string.IsNullOrWhiteSpace(className) || string.IsNullOrWhiteSpace(courseName) || string.IsNullOrWhiteSpace(teacherName))
+            {
+                skipped++;
+                continue;
+            }
+
+            var schoolClass = classes.FirstOrDefault(c => c.DisplayName == className);
+            var course = courses.FirstOrDefault(c => c.Name == courseName);
+            var teacher = teachers.FirstOrDefault(t => t.Name == teacherName);
+
+            if (schoolClass is null || course is null || teacher is null)
+            {
+                skipped++;
+                continue;
+            }
+
+            var existing = existingAssignments.FirstOrDefault(ca =>
+                ca.CourseId == course.Id && ca.ClassId == schoolClass.Id && ca.TeacherId == teacher.Id);
+
+            if (existing is not null)
+            {
+                existing.TeacherId = teacher.Id;
+                existing.WeeklyPeriods = weeklyPeriods;
+                updated++;
+            }
+            else
+            {
+                var assignment = new CourseAssignment
+                {
+                    SemesterId = semesterId,
+                    CourseId = course.Id,
+                    TeacherId = teacher.Id,
+                    ClassId = schoolClass.Id,
+                    WeeklyPeriods = weeklyPeriods
+                };
+                db.CourseAssignments.Add(assignment);
+                existingAssignments.Add(assignment);
+                created++;
+            }
+        }
+
+        await db.SaveChangesAsync();
+        return new ImportResult(created, updated, skipped);
+    }
 }

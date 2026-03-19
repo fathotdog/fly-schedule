@@ -8,7 +8,13 @@
       "Bash(npx:*)",
       "Bash(npm config:*)",
       "Bash(gh auth:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(ls:*)",
+      "Bash(git:*)",
+      "Bash(npm run:*)",
+      "Bash(find D:/git/fly/schedule/src/schedule-web/node_modules/@base-ui-components/react -name *.d.ts)",
+      "Bash(xargs cat:*)",
+      "WebFetch(domain:www.gunze.co.jp)"
     ]
   }
 }

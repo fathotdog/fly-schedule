@@ -44,7 +44,8 @@ export function SemesterTab() {
     mutationFn: setCurrentSemester,
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['semesters'] });
-      setCurrentSemesterId(data.id);
+      const name = `${data.academicYear}年 第${data.term}學期`;
+      setCurrentSemesterId(data.id, name);
     },
   });
 

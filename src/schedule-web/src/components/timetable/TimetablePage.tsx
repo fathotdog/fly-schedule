@@ -19,7 +19,7 @@ export function TimetablePage() {
   return (
     <div className="flex gap-4 h-full">
       {/* Left panel - Subject selector */}
-      <div className="w-72 shrink-0 bg-white rounded-xl shadow-panel p-4 overflow-auto">
+      <div className="w-72 shrink-0 bg-surface-container-lowest rounded-2xl border border-outline-variant/10 p-4 overflow-auto">
         <div className="mb-4 flex items-end gap-2">
           <div className="flex-1">
             <ClassSelector />
@@ -38,12 +38,12 @@ export function TimetablePage() {
       </div>
 
       {/* Center - Timetable grid */}
-      <div className="flex-1 overflow-auto bg-surface rounded-xl shadow-panel p-4">
+      <div className="flex-1 overflow-auto bg-surface-container-lowest rounded-2xl border border-outline-variant/10 p-4">
         <TimetableGrid />
       </div>
 
       {/* Right panel - Teacher schedule */}
-      <div className="w-80 shrink-0 bg-white rounded-xl shadow-panel p-4 overflow-auto">
+      <div className="w-80 shrink-0 bg-surface-container-lowest rounded-2xl border border-outline-variant/10 p-4 overflow-auto">
         <TeacherSchedulePanel />
       </div>
     </div>

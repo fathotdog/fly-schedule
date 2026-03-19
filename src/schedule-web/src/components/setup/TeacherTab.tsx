@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Plus, Trash2, Users, Download, Upload } from 'lucide-react';
 
 export function TeacherTab() {
@@ -70,10 +71,14 @@ export function TeacherTab() {
             </div>
             <div>
               <Label>職稱</Label>
-              <select value={staffTitleId} onChange={e => setStaffTitleId(+e.target.value)}
-                className="flex h-9 w-32 rounded-md border border-input bg-transparent px-3 py-1 text-sm">
-                {titles.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
+              <Select value={String(staffTitleId)} onValueChange={(val) => setStaffTitleId(Number(val))} items={titles.map(t => ({ value: String(t.id), label: t.name }))}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {titles.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label>每週最高節數</Label>

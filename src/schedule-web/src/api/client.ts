@@ -3,7 +3,9 @@ import type {
   Semester, SchoolClass, SchoolDay, StaffTitle, Teacher,
   Course, CourseAssignment, Period, HomeroomAssignment,
   SpecialRoom, TimetableSlot, TimetableGridResponse,
-  TeacherScheduleResponse, ConflictInfo, ImportResult
+  TeacherScheduleResponse, ConflictInfo, ImportResult,
+  BatchCourseAssignmentRequest, BatchCourseAssignmentResponse,
+  BatchTeacherAssignmentRequest
 } from './types';
 
 const api = axios.create({ baseURL: '/api' });
@@ -95,14 +97,22 @@ export const importCoursesExcel = async (file: File) => {
 };
 
 // Course Assignments
-export const getCourseAssignments = (semesterId: number, classId?: number) =>
-  api.get<CourseAssignment[]>(`/semesters/${semesterId}/course-assignments`, { params: classId ? { classId } : {} }).then(r => r.data);
+export const getCourseAssignments = (semesterId: number, classId?: number, teacherId?: number) => {
+  const params: Record<string, number> = {};
+  if (classId) params.classId = classId;
+  if (teacherId) params.teacherId = teacherId;
+  return api.get<CourseAssignment[]>(`/semesters/${semesterId}/course-assignments`, { params }).then(r => r.data);
+};
 export const createCourseAssignment = (semesterId: number, data: { courseId: number; teacherId: number; classId: number; weeklyPeriods: number }) =>
   api.post<CourseAssignment>(`/semesters/${semesterId}/course-assignments`, data).then(r => r.data);
 export const updateCourseAssignment = (semesterId: number, id: number, data: { teacherId: number; weeklyPeriods: number }) =>
   api.put<CourseAssignment>(`/semesters/${semesterId}/course-assignments/${id}`, data).then(r => r.data);
 export const deleteCourseAssignment = (semesterId: number, id: number) =>
   api.delete(`/semesters/${semesterId}/course-assignments/${id}`);
+export const batchCourseAssignments = (semesterId: number, data: BatchCourseAssignmentRequest) =>
+  api.post<BatchCourseAssignmentResponse>(`/semesters/${semesterId}/course-assignments/batch`, data).then(r => r.data);
+export const batchTeacherCourseAssignments = (semesterId: number, data: BatchTeacherAssignmentRequest) =>
+  api.post<BatchCourseAssignmentResponse>(`/semesters/${semesterId}/course-assignments/batch-by-teacher`, data).then(r => r.data);
 
 // Periods
 export const getPeriods = (semesterId: number) =>

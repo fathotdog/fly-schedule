@@ -46,10 +46,10 @@ public class ScheduleDbContext(DbContextOptions<ScheduleDbContext> options) : Db
             e.HasOne(t => t.StaffTitle).WithMany(st => st.Teachers).HasForeignKey(t => t.StaffTitleId);
         });
 
-        // CourseAssignment — each class has one teacher per course per semester
+        // CourseAssignment — 同班同課可有多位教師，但同教師不可重複
         modelBuilder.Entity<CourseAssignment>(e =>
         {
-            e.HasIndex(ca => new { ca.SemesterId, ca.CourseId, ca.ClassId }).IsUnique();
+            e.HasIndex(ca => new { ca.SemesterId, ca.CourseId, ca.ClassId, ca.TeacherId }).IsUnique();
             e.HasOne(ca => ca.Semester).WithMany(s => s.CourseAssignments).HasForeignKey(ca => ca.SemesterId);
             e.HasOne(ca => ca.Course).WithMany(c => c.CourseAssignments).HasForeignKey(ca => ca.CourseId);
             e.HasOne(ca => ca.Teacher).WithMany(t => t.CourseAssignments).HasForeignKey(ca => ca.TeacherId);

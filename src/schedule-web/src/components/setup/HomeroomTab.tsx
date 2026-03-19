@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { SearchSelect } from '@/components/ui/search-select';
 import { Plus, Trash2, Home } from 'lucide-react';
 import { useScheduleStore } from '@/store/useScheduleStore';
 
@@ -38,7 +39,7 @@ export function HomeroomTab() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['homerooms'] }),
   });
 
-  if (!currentSemesterId) return <p className="text-gray-500">請先選擇目前學期</p>;
+  if (!currentSemesterId) return <p className="text-on-surface-variant">請先選擇目前學期</p>;
 
   return (
     <div className="space-y-6">
@@ -54,19 +55,23 @@ export function HomeroomTab() {
           <div className="flex gap-4 items-end">
             <div>
               <Label>教師</Label>
-              <select value={teacherId} onChange={e => setTeacherId(+e.target.value)}
-                className="flex h-9 w-36 rounded-md border border-input bg-transparent px-3 py-1 text-sm">
-                <option value={0}>選擇教師</option>
-                {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
+              <SearchSelect
+                value={String(teacherId)}
+                onValueChange={(val) => setTeacherId(Number(val))}
+                placeholder="選擇教師"
+                items={[{ value: '0', label: '選擇教師' }, ...teachers.map(t => ({ value: String(t.id), label: t.name }))]}
+                className="w-36"
+              />
             </div>
             <div>
               <Label>班級</Label>
-              <select value={classId} onChange={e => setClassId(+e.target.value)}
-                className="flex h-9 w-36 rounded-md border border-input bg-transparent px-3 py-1 text-sm">
-                <option value={0}>選擇班級</option>
-                {classes.map(c => <option key={c.id} value={c.id}>{c.displayName}</option>)}
-              </select>
+              <SearchSelect
+                value={String(classId)}
+                onValueChange={(val) => setClassId(Number(val))}
+                placeholder="選擇班級"
+                items={[{ value: '0', label: '選擇班級' }, ...classes.map(c => ({ value: String(c.id), label: c.displayName }))]}
+                className="w-36"
+              />
             </div>
             <Button onClick={() => createMut.mutate()} disabled={!teacherId || !classId}>
               <Plus className="w-4 h-4 mr-1" /> 指定導師

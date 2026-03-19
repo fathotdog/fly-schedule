@@ -23,7 +23,7 @@ export function PeriodTab() {
   const classPeriods = periods.filter(p => !p.isActivity);
   const activityPeriods = periods.filter(p => p.isActivity);
 
-  if (!currentSemesterId) return <p className="text-gray-500">請先選擇目前學期</p>;
+  if (!currentSemesterId) return <p className="text-on-surface-variant">請先選擇目前學期</p>;
 
   return (
     <div className="space-y-6">
@@ -136,7 +136,7 @@ function ActivityPeriodsCard({ semesterId, periods, queryClient }: {
       </CardHeader>
       <CardContent>
         {adding && (
-          <div className="flex gap-3 items-end mb-4 p-3 bg-gray-50 rounded-lg">
+          <div className="flex gap-3 items-end mb-4 p-3 bg-surface-alt rounded-lg">
             <div>
               <Label>活動名稱</Label>
               <Input value={newName} onChange={e => setNewName(e.target.value)} className="w-36" placeholder="例：晨間打掃" />

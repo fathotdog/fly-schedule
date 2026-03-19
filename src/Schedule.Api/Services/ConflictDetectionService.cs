@@ -23,6 +23,17 @@ public class ConflictDetectionService(ScheduleDbContext db)
             return conflicts;
         }
 
+        // 0. Period limit check
+        var scheduledCount = await db.TimetableSlots
+            .CountAsync(ts => ts.CourseAssignmentId == courseAssignmentId);
+
+        if (scheduledCount >= assignment.WeeklyPeriods)
+        {
+            conflicts.Add(new ConflictInfo("PeriodLimitExceeded",
+                $"{assignment.Course.Name}已達每週{assignment.WeeklyPeriods}節上限，無法再排課"));
+            return conflicts;
+        }
+
         // 1. Teacher conflict
         var teacherConflict = await db.TimetableSlots
             .Include(ts => ts.CourseAssignment).ThenInclude(ca => ca.Course)

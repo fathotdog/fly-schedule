@@ -131,3 +131,36 @@ export interface ImportResult {
   updated: number;
   skipped: number;
 }
+
+export interface BatchCourseAssignmentItem {
+  id?: number;
+  courseId: number;
+  teacherId: number;
+  weeklyPeriods: number;
+}
+
+export interface BatchCourseAssignmentRequest {
+  classId: number;
+  upserts: BatchCourseAssignmentItem[];
+  deleteIds: number[];
+}
+
+export interface BatchCourseAssignmentResponse {
+  created: number;
+  updated: number;
+  deleted: number;
+  assignments: CourseAssignment[];
+}
+
+export interface BatchTeacherAssignmentItem {
+  id?: number;
+  courseId: number;
+  classId: number;
+  weeklyPeriods: number;
+}
+
+export interface BatchTeacherAssignmentRequest {
+  teacherId: number;
+  upserts: BatchTeacherAssignmentItem[];
+  deleteIds: number[];
+}

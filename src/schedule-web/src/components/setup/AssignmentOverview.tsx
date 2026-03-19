@@ -1,0 +1,149 @@
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { getCourseAssignments, getClasses, getCourses } from '@/api/client';
+import { Card, CardContent } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { SearchSelect } from '@/components/ui/search-select';
+import { Badge } from '@/components/ui/badge';
+import { useScheduleStore } from '@/store/useScheduleStore';
+
+export function AssignmentOverview() {
+  const { currentSemesterId } = useScheduleStore();
+  const [filterClassId, setFilterClassId] = useState(0);
+
+  const { data: classes = [] } = useQuery({
+    queryKey: ['classes', currentSemesterId],
+    queryFn: () => getClasses(currentSemesterId!),
+    enabled: !!currentSemesterId,
+  });
+
+  const { data: courses = [] } = useQuery({ queryKey: ['courses'], queryFn: getCourses });
+
+  const { data: allAssignments = [] } = useQuery({
+    queryKey: ['courseAssignments', currentSemesterId],
+    queryFn: () => getCourseAssignments(currentSemesterId!),
+    enabled: !!currentSemesterId,
+  });
+
+  const filteredAssignments = filterClassId > 0
+    ? allAssignments.filter(a => a.classId === filterClassId)
+    : allAssignments;
+
+  // Build per-class summary
+  const classSummary = classes.map(cls => {
+    const classAssignments = allAssignments.filter(a => a.classId === cls.id);
+    const assigned = classAssignments.length;
+    const total = courses.length;
+    const totalPeriods = classAssignments.reduce((sum, a) => sum + a.weeklyPeriods, 0);
+    return { cls, assigned, total, totalPeriods };
+  });
+
+  const getBadgeStyle = (assigned: number, total: number) => {
+    if (total === 0) return 'bg-surface-container text-on-surface-variant';
+    if (assigned === 0) return 'bg-surface-container text-on-surface-variant';
+    if (assigned >= total) return 'bg-green-100 text-green-700';
+    return 'bg-amber-100 text-amber-700';
+  };
+
+  if (!currentSemesterId) return <p className="text-on-surface-variant">請先選擇目前學期</p>;
+
+  return (
+    <div className="space-y-4">
+      {/* Class progress badges */}
+      <Card>
+        <CardContent className="pt-4">
+          <p className="text-sm font-medium text-muted-foreground mb-3">各班配課進度</p>
+          <div className="flex flex-wrap gap-2">
+            {classSummary.map(({ cls, assigned, total, totalPeriods }) => (
+              <button
+                key={cls.id}
+                onClick={() => setFilterClassId(filterClassId === cls.id ? 0 : cls.id)}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
+                  filterClassId === cls.id
+                    ? 'ring-2 ring-primary ring-offset-1'
+                    : ''
+                } ${getBadgeStyle(assigned, total)}`}
+              >
+                {cls.displayName} {assigned}/{total} ({totalPeriods}節)
+              </button>
+            ))}
+            {classSummary.length === 0 && (
+              <p className="text-sm text-muted-foreground">尚無班級資料</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Filter + table */}
+      <Card>
+        <CardContent className="pt-4 space-y-3">
+          <div className="flex items-end gap-4">
+            <div>
+              <Label>篩選班級</Label>
+              <SearchSelect
+                value={String(filterClassId)}
+                onValueChange={val => setFilterClassId(Number(val))}
+                placeholder="全部班級"
+                items={[
+                  { value: '0', label: '全部班級' },
+                  ...classes.map(c => ({ value: String(c.id), label: c.displayName }))
+                ]}
+                className="w-40"
+              />
+            </div>
+            <p className="text-sm text-muted-foreground pb-1">
+              共 <span className="font-semibold text-foreground">{filteredAssignments.length}</span> 筆配課
+            </p>
+          </div>
+
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>班級</TableHead>
+                <TableHead>課程</TableHead>
+                <TableHead>教師</TableHead>
+                <TableHead className="w-24">每週節數</TableHead>
+                <TableHead className="w-16">已排</TableHead>
+                <TableHead className="w-20">狀態</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredAssignments.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
+                    尚無配課資料
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredAssignments.map(a => (
+                  <TableRow key={a.id}>
+                    <TableCell>{a.classDisplayName}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: a.courseColorCode }} />
+                        {a.courseName}
+                      </div>
+                    </TableCell>
+                    <TableCell>{a.teacherName}</TableCell>
+                    <TableCell className="text-center">{a.weeklyPeriods}</TableCell>
+                    <TableCell className="text-center">{a.scheduledPeriods}</TableCell>
+                    <TableCell>
+                      {a.scheduledPeriods >= a.weeklyPeriods ? (
+                        <Badge className="text-xs bg-green-100 text-green-700 hover:bg-green-100">完成</Badge>
+                      ) : a.scheduledPeriods > 0 ? (
+                        <Badge variant="outline" className="text-xs text-amber-600 border-amber-400">部分</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-xs text-on-surface-variant">未排</Badge>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

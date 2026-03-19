@@ -9,7 +9,7 @@ import { DAY_NAMES } from '@/lib/constants';
 
 export function TimetableGrid() {
   const qc = useQueryClient();
-  const { currentSemesterId, selectedClassId, selectedCourseAssignmentId, setSelectedTeacherId } = useScheduleStore();
+  const { currentSemesterId, selectedClassId, selectedCourseAssignmentId, setSelectedCourseAssignmentId, setSelectedTeacherId } = useScheduleStore();
 
   const { data } = useQuery({
     queryKey: ['timetable', currentSemesterId, selectedClassId],
@@ -30,9 +30,16 @@ export function TimetableGrid() {
         dayOfWeek: params.dayOfWeek,
         periodId: params.periodId,
       }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['timetable'] });
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ['timetable'] });
       qc.invalidateQueries({ queryKey: ['teacherSchedule'] });
+      const updated = qc.getQueryData<{ courseAssignments: { id: number; scheduledPeriods: number; weeklyPeriods: number }[] }>(
+        ['timetable', currentSemesterId, selectedClassId]
+      );
+      const ca = updated?.courseAssignments.find(a => a.id === selectedCourseAssignmentId);
+      if (ca && ca.scheduledPeriods >= ca.weeklyPeriods) {
+        setSelectedCourseAssignmentId(null);
+      }
     },
     onError: (err) => {
       if (axios.isAxiosError(err) && err.response?.status === 409) {
@@ -54,9 +61,9 @@ export function TimetableGrid() {
 
   if (!selectedClassId) {
     return (
-      <div className="text-gray-400 text-center py-16 flex flex-col items-center gap-3">
-        <LayoutGrid className="w-12 h-12 text-gray-300" />
-        <span>請選擇班級以檢視課表</span>
+      <div className="bg-surface-container-low rounded-2xl p-8 text-center flex flex-col items-center gap-3">
+        <LayoutGrid className="w-12 h-12 text-primary/30" />
+        <span className="text-on-surface-variant">請選擇班級以檢視課表</span>
       </div>
     );
   }
@@ -72,23 +79,23 @@ export function TimetableGrid() {
       <table className="w-full border-separate border-spacing-1">
         <thead>
           <tr>
-            <th className="p-2 bg-grid-header text-primary rounded-lg w-16 text-sm font-semibold">節次</th>
+            <th className="p-2 bg-surface-container-low text-primary rounded-lg w-16 text-[10px] font-bold uppercase tracking-widest">節次</th>
             {DAY_NAMES.map((name, i) => (
-              <th key={i} className="p-2 bg-grid-header text-primary rounded-lg min-w-[140px] text-sm font-semibold">{name}</th>
+              <th key={i} className="p-2 bg-surface-container-low text-primary rounded-lg min-w-[140px] text-[10px] font-bold uppercase tracking-widest">{name}</th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {periods.map(period => (
+          {periods.filter(p => !p.isActivity).map(period => (
             <tr key={period.id}>
-              <td className="p-2 text-center font-medium bg-grid-header rounded-lg">
-                <div className="text-primary">{period.periodNumber}</div>
-                <div className="text-[10px] text-gray-400">{period.startTime?.substring(0, 5)}</div>
+              <td className="p-2 text-center font-medium bg-surface-container-low rounded-lg">
+                <div className="text-primary text-sm">{period.periodNumber}</div>
+                <div className="text-[10px] text-on-surface-variant">{period.startTime?.substring(0, 5)}</div>
               </td>
               {[1, 2, 3, 4, 5].map(day => {
                 const slot = getSlot(day, period.id);
                 return (
-                  <td key={day} className="p-0 h-20 relative rounded-lg border border-grid-line hover:border-primary/30">
+                  <td key={day} className="p-0 h-20 relative rounded-lg border border-outline-variant/15 hover:border-primary/30 transition-shadow">
                     {slot ? (
                       <SlotCell slot={slot}
                         onRemove={() => removeMut.mutate(slot.id)}
@@ -115,21 +122,21 @@ function SlotCell({ slot, onRemove, onSelectTeacher }: {
   onSelectTeacher: () => void;
 }) {
   return (
-    <div className="h-full p-1.5 flex flex-col justify-between group rounded-lg hover:shadow-card"
+    <div className="h-full p-1.5 flex flex-col justify-between group rounded-xl hover:shadow-card"
       style={{
         backgroundColor: slot.courseColorCode + '20',
         borderLeft: `3px solid ${slot.courseColorCode}`,
       }}>
       <div>
         <div className="font-medium text-sm" style={{ color: slot.courseColorCode }}>{slot.courseName}</div>
-        <button className="text-xs text-gray-600 hover:text-primary hover:underline"
+        <button className="text-xs text-on-surface-variant hover:text-primary hover:underline"
           onClick={onSelectTeacher}>
           {slot.teacherName}
         </button>
       </div>
       <div className="flex justify-end opacity-0 group-hover:opacity-100">
         <button onClick={onRemove}
-          className="p-1 rounded hover:bg-red-100 text-red-500" title="移除">
+          className="p-1 rounded hover:bg-error-container text-error" title="移除">
           <Minus className="w-3.5 h-3.5" />
         </button>
       </div>
@@ -140,9 +147,9 @@ function SlotCell({ slot, onRemove, onSelectTeacher }: {
 function EmptyCell({ canAdd, onAdd }: { canAdd: boolean; onAdd: () => void }) {
   if (!canAdd) return <div className="h-full" />;
   return (
-    <div className="h-full flex items-center justify-center cursor-pointer hover:bg-indigo-50/50 rounded-lg"
+    <div className="h-full flex items-center justify-center cursor-pointer hover:bg-surface-container-low rounded-xl"
       onClick={onAdd}>
-      <Plus className="w-5 h-5 text-gray-300" />
+      <Plus className="w-5 h-5 text-outline-variant" />
     </div>
   );
 }
