@@ -1,0 +1,8 @@
+src/Schedule.Api/bin/Debug/
+src/Schedule.Api/obj/Debug/
+.vs/
+src/Schedule.Api/obj/
+tests/Schedule.Api.Tests/bin/Debug/
+tests/Schedule.Api.Tests/obj/
+src/Schedule.Api/Schedule.Api.csproj.user
+src/Schedule.Api/schedule.db
