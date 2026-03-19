@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Academic Architect | Scheduling Workspace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary-fixed": "#dde1ff",
+                        "outline": "#747685",
+                        "tertiary": "#00413c",
+                        "on-primary-fixed-variant": "#0438b6",
+                        "surface-tint": "#2f53ce",
+                        "inverse-primary": "#b7c4ff",
+                        "secondary": "#515f74",
+                        "secondary-fixed-dim": "#b9c7df",
+                        "on-primary-fixed": "#001453",
+                        "on-secondary-container": "#57657a",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-fixed": "#00201d",
+                        "tertiary-fixed-dim": "#80d5cb",
+                        "on-primary": "#ffffff",
+                        "primary-container": "#1a43bf",
+                        "outline-variant": "#c4c5d6",
+                        "error": "#ba1a1a",
+                        "surface-container-low": "#f2f4f6",
+                        "background": "#f7f9fb",
+                        "on-secondary": "#ffffff",
+                        "inverse-surface": "#2d3133",
+                        "error-container": "#ffdad6",
+                        "secondary-container": "#d5e3fc",
+                        "secondary-fixed": "#d5e3fc",
+                        "surface-container-high": "#e6e8ea",
+                        "tertiary-container": "#005a54",
+                        "on-error": "#ffffff",
+                        "inverse-on-surface": "#eff1f3",
+                        "primary-fixed-dim": "#b7c4ff",
+                        "on-secondary-fixed": "#0d1c2e",
+                        "surface-container": "#eceef0",
+                        "on-primary-container": "#b2bfff",
+                        "surface-container-highest": "#e0e3e5",
+                        "on-tertiary-fixed-variant": "#00504a",
+                        "primary": "#002c98",
+                        "surface-variant": "#e0e3e5",
+                        "tertiary-fixed": "#9cf2e8",
+                        "on-error-container": "#93000a",
+                        "surface-bright": "#f7f9fb",
+                        "on-tertiary": "#ffffff",
+                        "surface": "#f7f9fb",
+                        "on-tertiary-container": "#7bd1c7",
+                        "on-surface": "#191c1e",
+                        "on-surface-variant": "#444654",
+                        "on-secondary-fixed-variant": "#3a485b",
+                        "surface-dim": "#d8dadc",
+                        "on-background": "#191c1e"
+                    },
+                    fontFamily: {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #c4c5d6; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body antialiased">
+<!-- TopNavBar (Shared Component) -->
+<header class="fixed top-0 w-full flex justify-between items-center px-6 h-16 bg-white/80 backdrop-blur-md border-b border-slate-200/50 z-40">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold tracking-tight text-slate-900 font-headline">Academic Architect</span>
+<div class="hidden md:flex items-center gap-6">
+<nav class="flex gap-6 text-sm font-medium">
+<a class="text-slate-500 hover:text-primary transition-colors" href="#">Dashboard</a>
+<a class="text-slate-500 hover:text-primary transition-colors" href="#">Management</a>
+<a class="text-blue-700 font-semibold" href="#">Workspace</a>
+<a class="text-slate-500 hover:text-primary transition-colors" href="#">Timetables</a>
+</nav>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative hidden lg:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-sm">search</span>
+<input class="pl-10 pr-4 py-2 bg-surface-container-highest border-none rounded-xl text-sm w-64 focus:ring-2 focus:ring-primary/20" placeholder="Search courses..." type="text"/>
+</div>
+<button class="p-2 text-outline hover:bg-slate-100 rounded-lg transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-outline hover:bg-slate-100 rounded-lg transition-colors">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+<div class="h-8 w-8 rounded-full bg-primary-fixed flex items-center justify-center text-primary font-bold text-xs overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="User profile avatar image" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCLVy9yQHDBrsOIxgLA3bSc9BRdVBeObqS-xpGDbByoAJW7trySVAqG0SPAU2UBN8u9B_jl_c0Dl4pSsTKvjOQAX7IM8ErgsALZvCpsMhKUbQ4zdky5jo4C4s8yzr5PGYykV5rVKkRIPwoUo_-_QY-yJiCrD4o342_RuLuvuV1ttzbuRHhMIuzkv3mTxbwFTj2vwqv1ueZdaCVcjXBou6dOA_O5kA0Fc9z4waxHxbKuP3duyPY5FPJYUxDd4L-EQTDmoUNLYTp3Xf0"/>
+</div>
+</div>
+</header>
+<!-- SideNavBar (Shared Component) -->
+<aside class="fixed left-0 top-0 h-full w-64 pt-16 flex flex-col p-4 border-r border-slate-200 bg-slate-50 z-30 hidden md:flex">
+<div class="mb-8 mt-4 px-2">
+<div class="flex items-center gap-3 mb-1">
+<div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-sm">school</span>
+</div>
+<span class="text-lg font-black text-blue-800 font-headline">EduSchedule Pro</span>
+</div>
+<span class="text-xs text-slate-500 px-11">Fall Semester 2024</span>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 hover:translate-x-1 transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-sm font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 hover:translate-x-1 transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">account_tree</span>
+<span class="text-sm font-medium">Management</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-blue-700 bg-white shadow-sm rounded-lg font-medium" href="#">
+<span class="material-symbols-outlined">grid_view</span>
+<span class="text-sm">Workspace</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 hover:translate-x-1 transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="text-sm font-medium">Timetables</span>
+</a>
+</nav>
+<div class="mt-auto space-y-4">
+<button class="w-full py-3 bg-gradient-to-br from-primary to-primary-container text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 flex items-center justify-center gap-2 hover:opacity-90 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-sm">add</span>
+                Create New Schedule
+            </button>
+<div class="pt-4 border-t border-slate-200 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 text-sm" href="#">
+<span class="material-symbols-outlined text-sm">ios_share</span>
+                    Export Data
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 text-sm" href="#">
+<span class="material-symbols-outlined text-sm">history</span>
+                    System Logs
+                </a>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="md:ml-64 pt-16 min-h-screen">
+<div class="p-6 max-w-[1600px] mx-auto">
+<!-- Header & Filter Row -->
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
+<div>
+<h1 class="text-3xl font-extrabold font-headline text-on-surface tracking-tight mb-1">Scheduling Workspace</h1>
+<p class="text-on-surface-variant text-sm">Drag courses from the pool to the grid to build your semester plan.</p>
+</div>
+<div class="flex flex-wrap items-center gap-3">
+<div class="flex bg-surface-container-high rounded-xl p-1">
+<button class="px-4 py-1.5 bg-surface-container-lowest text-primary shadow-sm rounded-lg text-sm font-semibold">Class View</button>
+<button class="px-4 py-1.5 text-on-surface-variant hover:text-on-surface text-sm font-medium">Teacher View</button>
+<button class="px-4 py-1.5 text-on-surface-variant hover:text-on-surface text-sm font-medium">Room View</button>
+</div>
+<select class="bg-surface-container-lowest border-none rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary/10 py-2.5 px-4 shadow-sm">
+<option>Grade 10 - Section A</option>
+<option>Grade 10 - Section B</option>
+<option>Grade 11 - Section A</option>
+</select>
+<button class="flex items-center gap-2 px-5 py-2.5 bg-tertiary text-on-tertiary rounded-xl font-bold text-sm hover:opacity-90 transition-all shadow-md">
+<span class="material-symbols-outlined text-sm">bolt</span>
+                        Auto-Schedule
+                    </button>
+</div>
+</div>
+<div class="grid grid-cols-12 gap-8">
+<!-- Sidebar: Unassigned Courses -->
+<div class="col-span-12 lg:col-span-3 space-y-6">
+<div class="bg-surface-container-low rounded-2xl p-5">
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-bold font-headline text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">pending_actions</span>
+                                Course Pool
+                            </h3>
+<span class="bg-primary/10 text-primary text-[10px] font-bold px-2 py-0.5 rounded-full">12 LEFT</span>
+</div>
+<div class="space-y-3 overflow-y-auto max-h-[600px] pr-2">
+<!-- Course Card 1 -->
+<div class="bg-surface-container-lowest p-4 rounded-xl shadow-sm border-l-4 border-primary cursor-grab hover:shadow-md transition-all group">
+<div class="flex justify-between items-start mb-2">
+<span class="text-[10px] font-bold text-primary uppercase tracking-wider">Science</span>
+<span class="material-symbols-outlined text-sm text-outline group-hover:text-primary transition-colors">drag_indicator</span>
+</div>
+<h4 class="font-bold text-sm mb-1">Advanced Physics</h4>
+<div class="flex items-center gap-2 text-[11px] text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px]">person</span>
+                                    Dr. Sarah Jenkins
+                                </div>
+<div class="flex items-center gap-2 text-[11px] text-on-surface-variant mt-1">
+<span class="material-symbols-outlined text-[14px]">meeting_room</span>
+                                    Lab 402
+                                </div>
+</div>
+<!-- Course Card 2 -->
+<div class="bg-surface-container-lowest p-4 rounded-xl shadow-sm border-l-4 border-tertiary cursor-grab hover:shadow-md transition-all group">
+<div class="flex justify-between items-start mb-2">
+<span class="text-[10px] font-bold text-tertiary uppercase tracking-wider">Mathematics</span>
+<span class="material-symbols-outlined text-sm text-outline group-hover:text-tertiary transition-colors">drag_indicator</span>
+</div>
+<h4 class="font-bold text-sm mb-1">Calculus II</h4>
+<div class="flex items-center gap-2 text-[11px] text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px]">person</span>
+                                    Prof. Michael Chen
+                                </div>
+<div class="flex items-center gap-2 text-[11px] text-on-surface-variant mt-1">
+<span class="material-symbols-outlined text-[14px]">meeting_room</span>
+                                    Room 201
+                                </div>
+</div>
+<!-- Course Card 3 (Conflict Visual) -->
+<div class="bg-surface-container-lowest p-4 rounded-xl shadow-sm border-l-4 border-error cursor-grab hover:shadow-md transition-all group relative overflow-hidden">
+<div class="absolute top-0 right-0 bg-error text-white text-[9px] px-2 py-0.5 font-bold rounded-bl-lg">CONFLICT</div>
+<div class="flex justify-between items-start mb-2">
+<span class="text-[10px] font-bold text-error uppercase tracking-wider">History</span>
+<span class="material-symbols-outlined text-sm text-outline">drag_indicator</span>
+</div>
+<h4 class="font-bold text-sm mb-1">World War II</h4>
+<div class="flex items-center gap-2 text-[11px] text-error">
+<span class="material-symbols-outlined text-[14px]">warning</span>
+                                    Teacher unavailable
+                                </div>
+</div>
+<!-- Course Card 4 -->
+<div class="bg-surface-container-lowest p-4 rounded-xl shadow-sm border-l-4 border-secondary cursor-grab hover:shadow-md transition-all group">
+<div class="flex justify-between items-start mb-2">
+<span class="text-[10px] font-bold text-secondary uppercase tracking-wider">Language</span>
+<span class="material-symbols-outlined text-sm text-outline group-hover:text-secondary transition-colors">drag_indicator</span>
+</div>
+<h4 class="font-bold text-sm mb-1">Modern Literature</h4>
+<div class="flex items-center gap-2 text-[11px] text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px]">person</span>
+                                    Ms. Elena Rossi
+                                </div>
+</div>
+</div>
+</div>
+<!-- Conflict Legend -->
+<div class="bg-white p-5 rounded-2xl border border-outline-variant/20 shadow-sm">
+<h4 class="text-xs font-bold text-on-surface uppercase tracking-widest mb-4">Conflict Monitor</h4>
+<div class="space-y-3">
+<div class="flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-error"></div>
+<span class="text-xs text-on-surface-variant">Teacher Double-booking</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-orange-400"></div>
+<span class="text-xs text-on-surface-variant">Room Capacity Limit</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+<span class="text-xs text-on-surface-variant">Valid Assignment</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Main Area: Weekly Calendar Grid -->
+<div class="col-span-12 lg:col-span-9">
+<div class="bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden border border-outline-variant/10">
+<!-- Grid Header -->
+<div class="grid grid-cols-6 border-b border-outline-variant/10 bg-surface">
+<div class="p-4 border-r border-outline-variant/10"></div>
+<div class="p-4 text-center border-r border-outline-variant/10">
+<span class="block text-xs font-bold text-primary uppercase tracking-widest">MON</span>
+<span class="text-[10px] text-on-surface-variant">Sep 09</span>
+</div>
+<div class="p-4 text-center border-r border-outline-variant/10">
+<span class="block text-xs font-bold text-on-surface-variant uppercase tracking-widest">TUE</span>
+<span class="text-[10px] text-on-surface-variant">Sep 10</span>
+</div>
+<div class="p-4 text-center border-r border-outline-variant/10">
+<span class="block text-xs font-bold text-on-surface-variant uppercase tracking-widest">WED</span>
+<span class="text-[10px] text-on-surface-variant">Sep 11</span>
+</div>
+<div class="p-4 text-center border-r border-outline-variant/10">
+<span class="block text-xs font-bold text-on-surface-variant uppercase tracking-widest">THU</span>
+<span class="text-[10px] text-on-surface-variant">Sep 12</span>
+</div>
+<div class="p-4 text-center">
+<span class="block text-xs font-bold text-on-surface-variant uppercase tracking-widest">FRI</span>
+<span class="text-[10px] text-on-surface-variant">Sep 13</span>
+</div>
+</div>
+<!-- Grid Body -->
+<div class="relative">
+<!-- Period Rows -->
+<div class="grid grid-cols-6">
+<!-- P1 -->
+<div class="p-4 text-right border-r border-b border-outline-variant/5 bg-surface-container-low">
+<span class="text-xs font-bold text-on-surface">Period 1</span>
+<span class="block text-[10px] text-on-surface-variant">08:10 - 09:00</span>
+</div>
+<div class="p-1 border-r border-b border-outline-variant/5 bg-surface group relative">
+<div class="h-full w-full rounded-lg border-2 border-dashed border-outline-variant/20 group-hover:border-primary/40 transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined text-outline-variant opacity-0 group-hover:opacity-100 transition-opacity">add</span>
+</div>
+</div>
+<div class="p-1 border-r border-b border-outline-variant/5 bg-white group relative">
+<div class="glass-card h-full w-full rounded-lg p-2 border-l-4 border-primary shadow-sm">
+<div class="text-[10px] font-bold text-primary mb-1">MATH-101</div>
+<div class="text-[11px] font-bold truncate">General Algebra</div>
+<div class="text-[9px] text-on-surface-variant">Rm 102</div>
+</div>
+</div>
+<div class="p-1 border-r border-b border-outline-variant/5 bg-surface"></div>
+<div class="p-1 border-r border-b border-outline-variant/5 bg-white">
+<div class="glass-card h-full w-full rounded-lg p-2 border-l-4 border-tertiary shadow-sm">
+<div class="text-[10px] font-bold text-tertiary mb-1">BIO-205</div>
+<div class="text-[11px] font-bold truncate">Cell Biology</div>
+</div>
+</div>
+<div class="p-1 border-b border-outline-variant/5 bg-surface"></div>
+<!-- P2 -->
+<div class="p-4 text-right border-r border-b border-outline-variant/5 bg-surface-container-low">
+<span class="text-xs font-bold text-on-surface">Period 2</span>
+<span class="block text-[10px] text-on-surface-variant">09:10 - 10:00</span>
+</div>
+<div class="p-1 border-r border-b border-outline-variant/5 bg-white">
+<div class="h-full w-full rounded-lg p-2 border-l-4 border-error bg-error-container/20 border-2 border-error/30 relative">
+<span class="material-symbols-outlined absolute top-1 right-1 text-error text-[14px]">warning</span>
+<div class="text-[10px] font-bold text-error mb-1">PHY-301</div>
+<div class="text-[11px] font-bold truncate">Optics Lab</div>
+</div>
+</div>
+<div class="p-1 border-r border-b border-outline-variant/5 bg-surface"></div>
+<div class="p-1 border-r border-b border-outline-variant/5 bg-white">
+<div class="glass-card h-full w-full rounded-lg p-2 border-l-4 border-primary shadow-sm">
+<div class="text-[10px] font-bold text-primary mb-1">ENG-112</div>
+<div class="text-[11px] font-bold truncate">Creative Writing</div>
+</div>
+</div>
+<div class="p-1 border-r border-b border-outline-variant/5 bg-surface"></div>
+<div class="p-1 border-b border-outline-variant/5 bg-white">
+<div class="glass-card h-full w-full rounded-lg p-2 border-l-4 border-secondary shadow-sm">
+<div class="text-[10px] font-bold text-secondary mb-1">ART-101</div>
+<div class="text-[11px] font-bold truncate">Design Theory</div>
+</div>
+</div>
+<!-- P3 -->
+<div class="p-4 text-right border-r border-b border-outline-variant/5 bg-surface-container-low">
+<span class="text-xs font-bold text-on-surface">Period 3</span>
+<span class="block text-[10px] text-on-surface-variant">10:10 - 11:00</span>
+</div>
+<div class="p-1 border-r border-b border-outline-variant/5 bg-surface"></div>
+<div class="p-1 border-r border-b border-outline-variant/5 bg-white">
+<div class="glass-card h-full w-full rounded-lg p-2 border-l-4 border-primary shadow-sm">
+<div class="text-[10px] font-bold text-primary mb-1">MATH-101</div>
+<div class="text-[11px] font-bold truncate">General Algebra</div>
+</div>
+</div>
+<div class="p-1 border-r border-b border-outline-variant/5 bg-white">
+<div class="glass-card h-full w-full rounded-lg p-2 border-l-4 border-tertiary shadow-sm">
+<div class="text-[10px] font-bold text-tertiary mb-1">CHEM-102</div>
+<div class="text-[11px] font-bold truncate">Organic Basics</div>
+</div>
+</div>
+<div class="p-1 border-r border-b border-outline-variant/5 bg-surface"></div>
+<div class="p-1 border-b border-outline-variant/5 bg-surface"></div>
+<!-- Break Row -->
+<div class="p-2 text-center col-span-6 bg-surface-container font-bold text-[10px] tracking-widest text-outline uppercase border-b border-outline-variant/5">
+                                    Short Recess (15 Min)
+                                </div>
+<!-- P4 -->
+<div class="p-4 text-right border-r border-b border-outline-variant/5 bg-surface-container-low">
+<span class="text-xs font-bold text-on-surface">Period 4</span>
+<span class="block text-[10px] text-on-surface-variant">11:15 - 12:05</span>
+</div>
+<div class="p-1 border-r border-b border-outline-variant/5 bg-white col-span-2">
+<div class="glass-card h-full w-full rounded-lg p-2 border-l-4 border-primary-container shadow-sm flex items-center justify-between">
+<div>
+<div class="text-[10px] font-bold text-primary-container mb-1">GYM-100</div>
+<div class="text-[11px] font-bold">Physical Education (Block)</div>
+</div>
+<span class="text-[9px] bg-primary-container/10 px-2 py-0.5 rounded text-primary-container">DOUBLE</span>
+</div>
+</div>
+<div class="p-1 border-r border-b border-outline-variant/5 bg-surface"></div>
+<div class="p-1 border-r border-b border-outline-variant/5 bg-white">
+<div class="glass-card h-full w-full rounded-lg p-2 border-l-4 border-primary shadow-sm">
+<div class="text-[10px] font-bold text-primary mb-1">MATH-101</div>
+<div class="text-[11px] font-bold truncate">General Algebra</div>
+</div>
+</div>
+<div class="p-1 border-b border-outline-variant/5 bg-white">
+<div class="glass-card h-full w-full rounded-lg p-2 border-l-4 border-tertiary shadow-sm">
+<div class="text-[10px] font-bold text-tertiary mb-1">BIO-205</div>
+<div class="text-[11px] font-bold truncate">Cell Biology</div>
+</div>
+</div>
+<!-- Lunch Row -->
+<div class="p-4 text-center col-span-6 bg-surface-container-high font-bold text-[10px] tracking-widest text-on-surface uppercase border-b border-outline-variant/5">
+                                    LUNCH BREAK
+                                </div>
+<!-- P5 to P8 omitted for brevity, but pattern continues -->
+<div class="p-4 text-right border-r border-b border-outline-variant/5 bg-surface-container-low">
+<span class="text-xs font-bold text-on-surface">Period 5</span>
+<span class="block text-[10px] text-on-surface-variant">13:30 - 14:20</span>
+</div>
+<div class="p-1 border-r border-b border-outline-variant/5 bg-surface col-span-5"></div>
+<div class="p-4 text-right border-r border-b border-outline-variant/5 bg-surface-container-low">
+<span class="text-xs font-bold text-on-surface">Period 6</span>
+<span class="block text-[10px] text-on-surface-variant">14:30 - 15:20</span>
+</div>
+<div class="p-1 border-r border-b border-outline-variant/5 bg-surface col-span-5"></div>
+<div class="p-4 text-right border-r border-b border-outline-variant/5 bg-surface-container-low">
+<span class="text-xs font-bold text-on-surface">Period 7</span>
+<span class="block text-[10px] text-on-surface-variant">15:30 - 16:20</span>
+</div>
+<div class="p-1 border-r border-b border-outline-variant/5 bg-surface col-span-5"></div>
+<div class="p-4 text-right border-r border-outline-variant/5 bg-surface-container-low">
+<span class="text-xs font-bold text-on-surface">Period 8</span>
+<span class="block text-[10px] text-on-surface-variant">16:30 - 17:20</span>
+</div>
+<div class="p-1 border-r border-outline-variant/5 bg-surface col-span-5"></div>
+</div>
+</div>
+</div>
+<!-- Grid Footer / Meta Info -->
+<div class="mt-6 flex flex-wrap items-center justify-between gap-4">
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2">
+<span class="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest">Total Hours:</span>
+<span class="text-sm font-extrabold text-primary">24 / 32</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest">Efficiency:</span>
+<span class="text-sm font-extrabold text-tertiary">86%</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="flex items-center gap-2 px-4 py-2 border border-outline-variant/50 text-on-surface rounded-xl text-xs font-bold hover:bg-white transition-all">
+<span class="material-symbols-outlined text-[16px]">undo</span>
+                                Undo
+                            </button>
+<button class="flex items-center gap-2 px-6 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:opacity-90 shadow-lg shadow-primary/20 transition-all">
+<span class="material-symbols-outlined text-[16px]">publish</span>
+                                Publish Schedule
+                            </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Mobile Bottom Navigation (Only visible on small screens) -->
+<nav class="md:hidden fixed bottom-0 w-full bg-white border-t border-slate-200 flex justify-around items-center h-16 px-4 z-50">
+<a class="flex flex-col items-center gap-1 text-slate-500" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-[10px]">Home</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-blue-700" href="#">
+<span class="material-symbols-outlined">grid_view</span>
+<span class="text-[10px] font-bold">Workspace</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-500" href="#">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="text-[10px]">Schedule</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-500" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-[10px]">Settings</span>
+</a>
+</nav>
+</body></html>

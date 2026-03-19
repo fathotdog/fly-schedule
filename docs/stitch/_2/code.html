@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Classroom &amp; Batch Management | Academic Architect</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<!-- Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "error": "#ba1a1a",
+                        "surface-tint": "#2f53ce",
+                        "outline-variant": "#c4c5d6",
+                        "secondary-fixed": "#d5e3fc",
+                        "on-surface": "#191c1e",
+                        "on-background": "#191c1e",
+                        "error-container": "#ffdad6",
+                        "surface-bright": "#f7f9fb",
+                        "inverse-surface": "#2d3133",
+                        "tertiary": "#00413c",
+                        "surface": "#f7f9fb",
+                        "on-tertiary-fixed-variant": "#00504a",
+                        "on-primary-fixed": "#001453",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-container": "#7bd1c7",
+                        "on-primary-container": "#b2bfff",
+                        "inverse-on-surface": "#eff1f3",
+                        "surface-container-high": "#e6e8ea",
+                        "surface-container-highest": "#e0e3e5",
+                        "on-secondary-container": "#57657a",
+                        "surface-container": "#eceef0",
+                        "secondary-fixed-dim": "#b9c7df",
+                        "secondary-container": "#d5e3fc",
+                        "outline": "#747685",
+                        "surface-container-low": "#f2f4f6",
+                        "inverse-primary": "#b7c4ff",
+                        "on-error-container": "#93000a",
+                        "secondary": "#515f74",
+                        "on-surface-variant": "#444654",
+                        "primary-container": "#1a43bf",
+                        "primary": "#002c98",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed-dim": "#80d5cb",
+                        "primary-fixed": "#dde1ff",
+                        "tertiary-container": "#005a54",
+                        "surface-variant": "#e0e3e5",
+                        "on-secondary-fixed-variant": "#3a485b",
+                        "background": "#f7f9fb",
+                        "surface-dim": "#d8dadc",
+                        "tertiary-fixed": "#9cf2e8",
+                        "on-primary-fixed-variant": "#0438b6",
+                        "on-error": "#ffffff",
+                        "on-secondary-fixed": "#0d1c2e",
+                        "on-primary": "#ffffff",
+                        "primary-fixed-dim": "#b7c4ff",
+                        "on-tertiary-fixed": "#00201d"
+                    },
+                    fontFamily: {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3 { font-family: 'Manrope', sans-serif; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface">
+<!-- TopNavBar (Shared Component) -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-6 h-16 bg-slate-50/80 backdrop-blur-md border-b border-slate-200/50 font-manrope antialiased">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold tracking-tight text-slate-900">Academic Architect</span>
+<div class="hidden md:flex items-center bg-slate-100 dark:bg-slate-800 rounded-full px-4 py-1.5 gap-2">
+<span class="material-symbols-outlined text-slate-500 text-sm">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-64 placeholder:text-slate-500" placeholder="Search resources..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+<div class="h-6 w-[1px] bg-slate-200 mx-2"></div>
+<button class="flex items-center gap-2 px-3 py-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">
+<span class="text-sm font-medium">Settings</span>
+</button>
+<img alt="User Profile" class="w-8 h-8 rounded-full border border-slate-200" data-alt="User profile avatar circle" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB7x7_rDUBgiID-LoT7q-1rAPS9jNjz5vKaZYc2PB7Y065d_71iAy6GzrqFe2vgr3yqNH3lXEk7MJtrYII4pJEuhqzV32r6Xtr_WZEeMV7kugi9eYxhsKNPO6d5Y8BEpT4tC1xBxrvzvg2a5VqC4qSkVUytjtbFvrFvym4DvTBRvgxJAA5tegYauqPfpin-jYygHhWtgiF1Efr_DQsJWFx0m8fBZtY8pOehwAhPfkX6KsPesLJh7pWmTdoMvaFATxxjAzgWryH3EVk"/>
+</div>
+</header>
+<!-- SideNavBar (Shared Component) -->
+<aside class="fixed left-0 top-0 h-full flex flex-col p-4 pt-20 border-r border-slate-200 bg-slate-50 w-64 z-40">
+<div class="mb-8 px-2">
+<div class="flex items-center gap-3 mb-1">
+<div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-lg">school</span>
+</div>
+<h2 class="text-lg font-black text-blue-800">EduSchedule Pro</h2>
+</div>
+<p class="text-xs text-slate-500 font-medium ml-11">Fall Semester 2024</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 hover:translate-x-1 transition-transform duration-200 font-manrope font-medium text-sm" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-blue-700 bg-white shadow-sm rounded-lg font-manrope font-semibold text-sm" href="#">
+<span class="material-symbols-outlined">account_tree</span>
+<span>Management</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 hover:translate-x-1 transition-transform duration-200 font-manrope font-medium text-sm" href="#">
+<span class="material-symbols-outlined">grid_view</span>
+<span>Workspace</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 hover:translate-x-1 transition-transform duration-200 font-manrope font-medium text-sm" href="#">
+<span class="material-symbols-outlined">calendar_today</span>
+<span>Timetables</span>
+</a>
+</nav>
+<div class="mt-auto pt-6 space-y-1 border-t border-slate-200">
+<button class="w-full mb-4 py-2.5 px-4 bg-primary text-white rounded-xl font-semibold text-sm shadow-lg shadow-primary/20 hover:scale-95 transition-transform duration-150 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm">add</span>
+                Create New Schedule
+            </button>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 font-manrope font-medium text-sm" href="#">
+<span class="material-symbols-outlined">ios_share</span>
+<span>Export Data</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 font-manrope font-medium text-sm" href="#">
+<span class="material-symbols-outlined">history</span>
+<span>System Logs</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-64 pt-24 px-8 pb-12 min-h-screen bg-surface">
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+<div>
+<nav class="flex gap-2 text-xs font-semibold text-on-surface-variant mb-2 uppercase tracking-wider">
+<span>Academic</span>
+<span class="text-outline-variant">/</span>
+<span class="text-primary">Batch Management</span>
+</nav>
+<h1 class="text-3xl font-extrabold text-on-surface tracking-tight">Classroom &amp; Batch Management</h1>
+<p class="text-on-surface-variant mt-1">Configure sections, student allocations, and classroom assignments for the current term.</p>
+</div>
+<div class="flex items-center gap-3">
+<button class="px-5 py-2.5 bg-surface-container-highest text-on-surface font-semibold rounded-xl text-sm hover:bg-surface-container-high transition-colors flex items-center gap-2 border border-outline-variant/20">
+<span class="material-symbols-outlined text-lg">file_upload</span>
+                    Bulk Import
+                </button>
+<button class="px-5 py-2.5 bg-gradient-to-br from-primary-container to-primary text-white font-semibold rounded-xl text-sm shadow-md hover:opacity-90 transition-opacity flex items-center gap-2">
+<span class="material-symbols-outlined text-lg">add_circle</span>
+                    Add New Class
+                </button>
+</div>
+</div>
+<!-- Filter & Search Bar - Tonal Layering -->
+<div class="bg-surface-container-low rounded-2xl p-4 mb-6 flex flex-wrap items-center gap-4 border border-outline-variant/10">
+<div class="flex-1 min-w-[300px] relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full pl-12 pr-4 py-3 bg-surface-container-lowest border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-sm text-on-surface placeholder:text-on-surface-variant/60" placeholder="Search by class name, grade, or department..." type="text"/>
+</div>
+<div class="flex items-center gap-2">
+<select class="bg-surface-container-lowest border-none rounded-xl py-3 pl-4 pr-10 text-sm font-medium text-on-surface focus:ring-2 focus:ring-primary/20 cursor-pointer">
+<option>All Grades</option>
+<option>Grade 10</option>
+<option>Grade 11</option>
+<option>Grade 12</option>
+</select>
+<select class="bg-surface-container-lowest border-none rounded-xl py-3 pl-4 pr-10 text-sm font-medium text-on-surface focus:ring-2 focus:ring-primary/20 cursor-pointer">
+<option>All Departments</option>
+<option>Science</option>
+<option>Humanities</option>
+<option>Commerce</option>
+</select>
+<button class="p-3 bg-surface-container-lowest text-on-surface-variant rounded-xl hover:text-primary transition-colors">
+<span class="material-symbols-outlined">filter_list</span>
+</button>
+</div>
+</div>
+<!-- Content Grid (Asymmetric Bento Style for Stats) -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+<div class="md:col-span-1 bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/10 shadow-sm">
+<p class="text-sm font-bold text-primary uppercase tracking-widest mb-1">Total Classes</p>
+<h3 class="text-4xl font-black text-on-surface">42</h3>
+<div class="mt-4 flex items-center gap-2 text-tertiary text-xs font-bold">
+<span class="material-symbols-outlined text-sm">trending_up</span>
+<span>+4 from last term</span>
+</div>
+</div>
+<div class="md:col-span-1 bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/10 shadow-sm">
+<p class="text-sm font-bold text-primary uppercase tracking-widest mb-1">Active Students</p>
+<h3 class="text-4xl font-black text-on-surface">1,280</h3>
+<div class="mt-4 flex items-center gap-2 text-on-surface-variant text-xs font-medium">
+<span class="material-symbols-outlined text-sm">groups</span>
+<span>Avg. 30 per class</span>
+</div>
+</div>
+<div class="md:col-span-2 bg-gradient-to-r from-primary to-primary-container p-6 rounded-2xl shadow-xl shadow-primary/20 relative overflow-hidden">
+<div class="relative z-10">
+<p class="text-sm font-bold text-white/70 uppercase tracking-widest mb-1">Capacity Status</p>
+<h3 class="text-4xl font-black text-white">88% <span class="text-lg font-medium text-white/60 ml-2">Utilized</span></h3>
+<div class="mt-4 w-full bg-white/20 rounded-full h-2">
+<div class="bg-white h-2 rounded-full w-[88%]"></div>
+</div>
+</div>
+<span class="material-symbols-outlined absolute -right-4 -bottom-4 text-9xl text-white/10 rotate-12">architecture</span>
+</div>
+</div>
+<!-- Table View - Clean Academic Style -->
+<div class="bg-surface-container-lowest rounded-2xl border border-outline-variant/10 overflow-hidden shadow-sm">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low border-b border-outline-variant/10">
+<th class="px-6 py-4 text-xs font-bold text-primary uppercase tracking-widest">Class Name</th>
+<th class="px-6 py-4 text-xs font-bold text-primary uppercase tracking-widest">Grade Level</th>
+<th class="px-6 py-4 text-xs font-bold text-primary uppercase tracking-widest">Student Count</th>
+<th class="px-6 py-4 text-xs font-bold text-primary uppercase tracking-widest">Department/Track</th>
+<th class="px-6 py-4 text-xs font-bold text-primary uppercase tracking-widest">Assigned Room</th>
+<th class="px-6 py-4 text-xs font-bold text-primary uppercase tracking-widest text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-low/50 transition-colors group">
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="w-1 h-10 bg-primary-container rounded-full"></div>
+<div>
+<p class="font-bold text-on-surface">Section A-101</p>
+<p class="text-xs text-on-surface-variant">Core Curriculum</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-secondary-container text-on-secondary-container">
+                                    Grade 10
+                                </span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2">
+<span class="text-sm font-semibold text-on-surface">32</span>
+<span class="text-xs text-on-surface-variant">/ 35</span>
+</div>
+</td>
+<td class="px-6 py-5 text-sm font-medium text-on-surface">Science &amp; Tech</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2 text-sm text-on-surface">
+<span class="material-symbols-outlined text-primary text-lg">meeting_room</span>
+<span>Lab 402</span>
+</div>
+</td>
+<td class="px-6 py-5 text-right">
+<div class="flex items-center justify-end gap-2">
+<button class="p-2 text-on-surface-variant hover:text-primary hover:bg-white rounded-lg transition-all">
+<span class="material-symbols-outlined text-xl">edit</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-error hover:bg-white rounded-lg transition-all">
+<span class="material-symbols-outlined text-xl">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-low/50 transition-colors group">
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="w-1 h-10 bg-tertiary-container rounded-full"></div>
+<div>
+<p class="font-bold text-on-surface">Advanced Physics</p>
+<p class="text-xs text-on-surface-variant">Elective Track</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-secondary-container text-on-secondary-container">
+                                    Grade 11
+                                </span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2">
+<span class="text-sm font-semibold text-on-surface">28</span>
+<span class="text-xs text-on-surface-variant">/ 30</span>
+</div>
+</td>
+<td class="px-6 py-5 text-sm font-medium text-on-surface">Science</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2 text-sm text-on-surface">
+<span class="material-symbols-outlined text-primary text-lg">meeting_room</span>
+<span>Hall B-12</span>
+</div>
+</td>
+<td class="px-6 py-5 text-right">
+<div class="flex items-center justify-end gap-2">
+<button class="p-2 text-on-surface-variant hover:text-primary hover:bg-white rounded-lg transition-all">
+<span class="material-symbols-outlined text-xl">edit</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-error hover:bg-white rounded-lg transition-all">
+<span class="material-symbols-outlined text-xl">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-low/50 transition-colors group">
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="w-1 h-10 bg-secondary-fixed rounded-full"></div>
+<div>
+<p class="font-bold text-on-surface">Literature Honors</p>
+<p class="text-xs text-on-surface-variant">Arts Program</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-secondary-container text-on-secondary-container">
+                                    Grade 12
+                                </span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2">
+<span class="text-sm font-semibold text-on-surface">24</span>
+<span class="text-xs text-on-surface-variant">/ 25</span>
+</div>
+</td>
+<td class="px-6 py-5 text-sm font-medium text-on-surface">Humanities</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2 text-sm text-on-surface">
+<span class="material-symbols-outlined text-primary text-lg">meeting_room</span>
+<span>Room 105</span>
+</div>
+</td>
+<td class="px-6 py-5 text-right">
+<div class="flex items-center justify-end gap-2">
+<button class="p-2 text-on-surface-variant hover:text-primary hover:bg-white rounded-lg transition-all">
+<span class="material-symbols-outlined text-xl">edit</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-error hover:bg-white rounded-lg transition-all">
+<span class="material-symbols-outlined text-xl">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 4 (Conflict State) -->
+<tr class="hover:bg-surface-container-low/50 transition-colors group bg-error-container/10">
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="w-1 h-10 bg-error rounded-full"></div>
+<div>
+<p class="font-bold text-on-surface">Intro to Econ</p>
+<p class="text-xs text-error font-medium">Unassigned Classroom</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-secondary-container text-on-secondary-container">
+                                    Grade 10
+                                </span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2 text-error">
+<span class="text-sm font-bold">38</span>
+<span class="text-xs">/ 35</span>
+<span class="material-symbols-outlined text-sm">warning</span>
+</div>
+</td>
+<td class="px-6 py-5 text-sm font-medium text-on-surface">Commerce</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2 text-sm text-error font-semibold italic">
+<span class="material-symbols-outlined text-lg">error_outline</span>
+<span>TBD</span>
+</div>
+</td>
+<td class="px-6 py-5 text-right">
+<div class="flex items-center justify-end gap-2">
+<button class="p-2 text-on-surface-variant hover:text-primary hover:bg-white rounded-lg transition-all">
+<span class="material-symbols-outlined text-xl">edit</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-error hover:bg-white rounded-lg transition-all">
+<span class="material-symbols-outlined text-xl">delete</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination -->
+<div class="px-6 py-4 bg-surface-container-low/30 border-t border-outline-variant/10 flex items-center justify-between">
+<p class="text-xs font-medium text-on-surface-variant">Showing 1 to 4 of 42 entries</p>
+<div class="flex items-center gap-1">
+<button class="p-2 text-on-surface-variant hover:bg-white rounded-lg disabled:opacity-30" disabled="">
+<span class="material-symbols-outlined text-xl">chevron_left</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg bg-primary text-white text-xs font-bold">1</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-white text-xs font-bold">2</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-white text-xs font-bold">3</button>
+<button class="p-2 text-on-surface-variant hover:bg-white rounded-lg">
+<span class="material-symbols-outlined text-xl">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+</body></html>
