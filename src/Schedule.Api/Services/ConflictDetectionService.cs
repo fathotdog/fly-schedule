@@ -23,7 +23,7 @@ public class ConflictDetectionService(ScheduleDbContext db)
             return conflicts;
         }
 
-        // 0. Period limit check
+        // 0. Period limit check (must run first — returns early)
         var scheduledCount = await db.TimetableSlots
             .CountAsync(ts => ts.CourseAssignmentId == courseAssignmentId
                               && (excludeSlotIds == null || !excludeSlotIds.Contains(ts.Id)));
@@ -35,7 +35,7 @@ public class ConflictDetectionService(ScheduleDbContext db)
             return conflicts;
         }
 
-        // 1. Teacher conflict（無教師時略過）
+        // 1. Teacher conflict (skip when no teacher)
         if (assignment.TeacherId.HasValue)
         {
             var teacherConflict = await db.TimetableSlots

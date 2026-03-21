@@ -1,11 +1,13 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getCourseAssignments, getTeachers, getClasses, assignTeacher, unassignTeacher } from '@/api/client';
+import { getCourseAssignments, getTeachers, assignTeacher, unassignTeacher } from '@/api/client';
+import { useClasses } from '@/hooks/useClasses';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { SearchSelect } from '@/components/ui/search-select';
+import { CourseDot } from '@/components/ui/course-dot';
 import { Badge } from '@/components/ui/badge';
 import { BookOpen, RotateCcw } from 'lucide-react';
 import { useScheduleStore } from '@/store/useScheduleStore';
@@ -33,11 +35,7 @@ export function BatchAssignmentByTeacherPanel() {
     enabled: !!currentSemesterId && selectedTeacherId > 0,
   });
 
-  const { data: classes = [] } = useQuery({
-    queryKey: ['classes', currentSemesterId],
-    queryFn: () => getClasses(currentSemesterId!),
-    enabled: !!currentSemesterId && selectedTeacherId > 0,
-  });
+  const { data: classes = [] } = useClasses();
 
   const unassignedAssignments = useMemo(
     () => allAssignments.filter(a => a.teacherId === null),
@@ -47,6 +45,7 @@ export function BatchAssignmentByTeacherPanel() {
   const claimItems: ClaimItem[] = useMemo(() => {
     const classMap = new Map(classes.map(c => [c.id, c]));
     return unassignedAssignments.map(a => ({
+      id: a.id,
       courseId: a.courseId,
       courseName: a.courseName,
       courseColorCode: a.courseColorCode,
@@ -57,8 +56,8 @@ export function BatchAssignmentByTeacherPanel() {
     }));
   }, [unassignedAssignments, classes]);
 
-  const selectedTeacher = teachers.find(t => t.id === selectedTeacherId);
-  const totalClaimedPeriods = claimedAssignments.reduce((sum, a) => sum + a.weeklyPeriods, 0);
+  const selectedTeacher = useMemo(() => teachers.find(t => t.id === selectedTeacherId), [teachers, selectedTeacherId]);
+  const totalClaimedPeriods = useMemo(() => claimedAssignments.reduce((sum, a) => sum + a.weeklyPeriods, 0), [claimedAssignments]);
   const maxPeriods = selectedTeacher?.maxWeeklyPeriods ?? 0;
 
   const assignMut = useMutation({
@@ -78,11 +77,7 @@ export function BatchAssignmentByTeacherPanel() {
   });
 
   const handleClaim = (items: ClaimItem[]) => {
-    const ids = items.flatMap(item =>
-      unassignedAssignments
-        .filter(a => a.courseId === item.courseId && a.classId === item.classId)
-        .map(a => a.id)
-    );
+    const ids = items.map(item => item.id);
     if (ids.length > 0) assignMut.mutate(ids);
   };
 
@@ -159,7 +154,7 @@ export function BatchAssignmentByTeacherPanel() {
                     <TableRow key={a.id}>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <span className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: a.courseColorCode }} />
+                          <CourseDot color={a.courseColorCode} />
                           {a.courseName}
                         </div>
                       </TableCell>

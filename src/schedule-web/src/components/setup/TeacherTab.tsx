@@ -171,7 +171,7 @@ export function TeacherTab() {
                     </TableCell>
                     <TableCell>
                       {editingId === t.id ? (
-                        <Select value={String(editStaffTitleId)} onValueChange={val => setEditStaffTitleId(Number(val))}>
+                        <Select value={String(editStaffTitleId)} onValueChange={val => setEditStaffTitleId(Number(val))} items={titles.map(st => ({ value: String(st.id), label: st.name }))}>
                           <SelectTrigger className="h-7 w-28">
                             <SelectValue />
                           </SelectTrigger>

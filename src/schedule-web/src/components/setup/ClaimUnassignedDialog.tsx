@@ -2,8 +2,10 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { SearchSelect } from '@/components/ui/search-select';
+import { CourseDot } from '@/components/ui/course-dot';
 
 export interface ClaimItem {
+  id: number;
   courseId: number;
   courseName: string;
   courseColorCode: string;
@@ -102,7 +104,7 @@ export function ClaimUnassignedDialog({ open, onOpenChange, items, onClaim }: Pr
     return [...map.values()];
   }, [filtered]);
 
-  const itemKey = (item: ClaimItem) => `${item.courseId}-${item.classId}`;
+  const itemKey = (item: ClaimItem) => String(item.id);
 
   const toggleItem = (key: string) => {
     setSelectedKeys(prev => {
@@ -197,10 +199,7 @@ export function ClaimUnassignedDialog({ open, onOpenChange, items, onClaim }: Pr
                         </td>
                         <td className="p-2 font-medium" colSpan={2}>
                           <div className="flex items-center gap-2">
-                            <span
-                              className="w-3 h-3 rounded-sm flex-shrink-0"
-                              style={{ backgroundColor: group.courseColorCode }}
-                            />
+                            <CourseDot color={group.courseColorCode} />
                             {group.courseName}
                             <span className="text-xs text-muted-foreground font-normal">
                               {group.items.length} 班

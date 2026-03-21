@@ -16,6 +16,7 @@ builder.Services.AddScoped<TimetableService>();
 builder.Services.AddScoped<TimetablePdfService>();
 builder.Services.AddScoped<ExcelService>();
 builder.Services.AddScoped<DashboardService>();
+builder.Services.AddScoped<CourseAssignmentService>();
 
 builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>

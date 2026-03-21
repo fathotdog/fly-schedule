@@ -19,6 +19,7 @@ import { TimetablePage } from '@/components/timetable/TimetablePage';
 import { DashboardPage } from '@/components/dashboard/DashboardPage';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Navbar } from '@/components/layout/Navbar';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000 } },
@@ -31,10 +32,12 @@ function AppContent() {
   const { data: semesters = [] } = useQuery({ queryKey: ['semesters'], queryFn: getSemesters });
 
   useEffect(() => {
+    if (semesters.length === 0) return;
     const current = semesters.find(s => s.isCurrent);
-    if (current && !currentSemesterId) {
-      const name = `${current.academicYear}年 第${current.term}學期`;
-      setCurrentSemesterId(current.id, name);
+    const stillExists = semesters.some(s => s.id === currentSemesterId);
+    // Auto-select current semester when none is chosen, or when persisted one was deleted
+    if (!stillExists && current) {
+      setCurrentSemesterId(current.id, `${current.academicYear}年 第${current.term}學期`);
     }
   }, [semesters, currentSemesterId, setCurrentSemesterId]);
 
@@ -53,20 +56,22 @@ function AppContent() {
       <Navbar semesters={semesters} currentSemesterId={currentSemesterId} onSemesterChange={handleSemesterChange} />
 
       <main className={cn('pt-16 transition-all duration-300', sidebarCollapsed ? 'ml-16' : 'ml-64')}>
-        <div className={isTimetable ? 'h-[calc(100vh-4rem)] p-4' : 'p-6'}>
-          {activeTab === 'dashboard' && <DashboardPage />}
-          {activeTab === 'semester' && <SemesterTab />}
-          {activeTab === 'classes' && <ClassTab />}
-          {activeTab === 'schoolDays' && <SchoolDayTab />}
-          {activeTab === 'staffTitles' && <StaffTitleTab />}
-          {activeTab === 'teachers' && <TeacherTab />}
-          {activeTab === 'courses' && <CourseTab />}
-          {activeTab === 'assignments' && <CourseAssignmentTab />}
-          {activeTab === 'periods' && <PeriodTab />}
-          {activeTab === 'homerooms' && <HomeroomTab />}
-          {activeTab === 'rooms' && <SpecialRoomTab />}
-          {activeTab === 'timetable' && <TimetablePage />}
-        </div>
+        <ErrorBoundary>
+          <div className={isTimetable ? 'h-[calc(100vh-4rem)] p-4' : 'p-6'}>
+            {activeTab === 'dashboard' && <DashboardPage />}
+            {activeTab === 'semester' && <SemesterTab />}
+            {activeTab === 'classes' && <ClassTab />}
+            {activeTab === 'schoolDays' && <SchoolDayTab />}
+            {activeTab === 'staffTitles' && <StaffTitleTab />}
+            {activeTab === 'teachers' && <TeacherTab />}
+            {activeTab === 'courses' && <CourseTab />}
+            {activeTab === 'assignments' && <CourseAssignmentTab />}
+            {activeTab === 'periods' && <PeriodTab />}
+            {activeTab === 'homerooms' && <HomeroomTab />}
+            {activeTab === 'rooms' && <SpecialRoomTab />}
+            {activeTab === 'timetable' && <TimetablePage />}
+          </div>
+        </ErrorBoundary>
       </main>
 
       <Toaster position="top-right" />

@@ -1,47 +1,38 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getCourseAssignments, getClasses, getCourses } from '@/api/client';
+import { getCourses } from '@/api/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { SearchSelect } from '@/components/ui/search-select';
+import { CourseDot } from '@/components/ui/course-dot';
 import { Badge } from '@/components/ui/badge';
 import { useScheduleStore } from '@/store/useScheduleStore';
+import { useClasses } from '@/hooks/useClasses';
+import { useCourseAssignments } from '@/hooks/useCourseAssignments';
 
 export function AssignmentOverview() {
   const { currentSemesterId } = useScheduleStore();
   const [filterClassId, setFilterClassId] = useState(0);
 
-  const { data: classes = [] } = useQuery({
-    queryKey: ['classes', currentSemesterId],
-    queryFn: () => getClasses(currentSemesterId!),
-    enabled: !!currentSemesterId,
-  });
-
+  const { data: classes = [] } = useClasses();
   const { data: courses = [] } = useQuery({ queryKey: ['courses'], queryFn: getCourses });
-
-  const { data: allAssignments = [] } = useQuery({
-    queryKey: ['courseAssignments', currentSemesterId],
-    queryFn: () => getCourseAssignments(currentSemesterId!),
-    enabled: !!currentSemesterId,
-  });
+  const { data: allAssignments = [] } = useCourseAssignments();
 
   const filteredAssignments = filterClassId > 0
     ? allAssignments.filter(a => a.classId === filterClassId)
     : allAssignments;
 
-  // Build per-class summary
-  const classSummary = classes.map(cls => {
+  const classSummary = useMemo(() => classes.map(cls => {
     const classAssignments = allAssignments.filter(a => a.classId === cls.id);
-    const assigned = classAssignments.length;
+    const assigned = classAssignments.filter(a => a.teacherId !== null).length;
     const total = courses.length;
     const totalPeriods = classAssignments.reduce((sum, a) => sum + a.weeklyPeriods, 0);
     return { cls, assigned, total, totalPeriods };
-  });
+  }), [allAssignments, classes, courses.length]);
 
   const getBadgeStyle = (assigned: number, total: number) => {
-    if (total === 0) return 'bg-surface-container text-on-surface-variant';
-    if (assigned === 0) return 'bg-surface-container text-on-surface-variant';
+    if (total === 0 || assigned === 0) return 'bg-surface-container text-on-surface-variant';
     if (assigned >= total) return 'bg-green-100 text-green-700';
     return 'bg-amber-100 text-amber-700';
   };
@@ -50,7 +41,6 @@ export function AssignmentOverview() {
 
   return (
     <div className="space-y-4">
-      {/* Class progress badges */}
       <Card>
         <CardContent className="pt-4">
           <p className="text-sm font-medium text-muted-foreground mb-3">各班配課進度</p>
@@ -60,9 +50,7 @@ export function AssignmentOverview() {
                 key={cls.id}
                 onClick={() => setFilterClassId(filterClassId === cls.id ? 0 : cls.id)}
                 className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
-                  filterClassId === cls.id
-                    ? 'ring-2 ring-primary ring-offset-1'
-                    : ''
+                  filterClassId === cls.id ? 'ring-2 ring-primary ring-offset-1' : ''
                 } ${getBadgeStyle(assigned, total)}`}
               >
                 {cls.displayName} {assigned}/{total} ({totalPeriods}節)
@@ -75,7 +63,6 @@ export function AssignmentOverview() {
         </CardContent>
       </Card>
 
-      {/* Filter + table */}
       <Card>
         <CardContent className="pt-4 space-y-3">
           <div className="flex items-end gap-4">
@@ -121,7 +108,7 @@ export function AssignmentOverview() {
                     <TableCell>{a.classDisplayName}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: a.courseColorCode }} />
+                        <CourseDot color={a.courseColorCode} />
                         {a.courseName}
                       </div>
                     </TableCell>

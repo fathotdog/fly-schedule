@@ -32,7 +32,7 @@ npm run lint        # ESLint
 
 - **Entry**: `src/Schedule.Api/Program.cs` — registers services and maps endpoint groups
 - **Endpoints**: `src/Schedule.Api/Endpoints/` — Minimal API route handlers (no MVC controllers)
-- **Services**: `ConflictDetectionService`, `TimetableService`, `TimetablePdfService`, `ExcelService`
+- **Services**: `ConflictDetectionService`, `TimetableService`, `TimetablePdfService`, `ExcelService`, `DashboardService`
 - **Data**: `src/Schedule.Api/Data/ScheduleDbContext.cs` — EF Core with SQLite (WAL mode enabled)
 - **Seeded data**: 10 default courses (國文, 英語, etc.) + 3 staff titles (StaffTitle)
 
@@ -65,7 +65,8 @@ Vite dev proxy: requests to `/api/*` → `http://localhost:5041`. In production,
 
 ## Design System
 
-The UI follows an "Academic Architect" design philosophy documented in `gunze-130th-design-system.md`:
+The UI follows an "Academic Architect" design philosophy documented in `docs/stitch/academic_core/DESIGN.md`:
+(Note: `gunze-130th-design-system.md` is a reverse-engineering study of the GUNZE 130th anniversary site — it is design inspiration only, not the project's design system.)
 - **Colors**: Material Design 3 tokens — primary blue `#002c98`, tertiary `#00413c`
 - **Typography**: Manrope (headlines), Inter (body, 0.875rem base)
 - **Style**: Surface-based depth layering, no hard borders, no divider lines — use tonal depth instead

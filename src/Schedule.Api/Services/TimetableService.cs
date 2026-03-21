@@ -29,7 +29,7 @@ public class TimetableService(ScheduleDbContext db, ConflictDetectionService con
             .Include(ca => ca.Teacher)
             .Include(ca => ca.Class)
             .Include(ca => ca.TimetableSlots)
-            .Where(ca => ca.SemesterId == semesterId && ca.ClassId == classId)
+            .Where(ca => ca.SemesterId == semesterId && ca.ClassId == classId && ca.TeacherId != null)
             .Select(ca => new CourseAssignmentProgressDto(
                 ca.Id, ca.CourseId, ca.Course.Name, ca.Course.ColorCode,
                 ca.TeacherId, ca.Teacher != null ? ca.Teacher.Name : null,
@@ -84,7 +84,6 @@ public class TimetableService(ScheduleDbContext db, ConflictDetectionService con
 
         await db.SaveChangesAsync();
 
-        // Reload with includes
         var loaded = await SlotWithFullIncludes().FirstAsync(ts => ts.Id == slot.Id);
 
         return (MapSlotDto(loaded), []);
@@ -141,10 +140,28 @@ public class TimetableService(ScheduleDbContext db, ConflictDetectionService con
         if (allConflicts.Count > 0)
             return ([], allConflicts);
 
-        (slot1!.DayOfWeek, slot2!.DayOfWeek) = (slot2.DayOfWeek, slot1.DayOfWeek);
-        (slot1.PeriodId, slot2.PeriodId) = (slot2.PeriodId, slot1.PeriodId);
+        var (origDay1, origPeriod1) = (slot1!.DayOfWeek, slot1.PeriodId);
+        var (origDay2, origPeriod2) = (slot2!.DayOfWeek, slot2.PeriodId);
 
-        await db.SaveChangesAsync();
+        if (slot1.CourseAssignmentId == slot2.CourseAssignmentId)
+        {
+            // Same CA: two-phase swap to avoid unique constraint violation
+            // (SQLite checks per-statement; direct swap would temporarily duplicate a row)
+            slot1.DayOfWeek = -1;
+            await db.SaveChangesAsync();
+
+            slot1.DayOfWeek = origDay2;
+            slot1.PeriodId = origPeriod2;
+            slot2.DayOfWeek = origDay1;
+            slot2.PeriodId = origPeriod1;
+            await db.SaveChangesAsync();
+        }
+        else
+        {
+            (slot1.DayOfWeek, slot2.DayOfWeek) = (origDay2, origDay1);
+            (slot1.PeriodId, slot2.PeriodId) = (origPeriod2, origPeriod1);
+            await db.SaveChangesAsync();
+        }
 
         var reloaded = await SlotWithFullIncludes()
             .Where(ts => ts.Id == slot1.Id || ts.Id == slot2.Id)
