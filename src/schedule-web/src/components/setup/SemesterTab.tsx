@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2, Star, Calendar, Pencil, Check, X } from 'lucide-react';
 import { useScheduleStore } from '@/store/useScheduleStore';
 
@@ -17,14 +18,15 @@ export function SemesterTab() {
   const [term, setTerm] = useState(1);
   const [startDate, setStartDate] = useState('');
   const [schoolName, setSchoolName] = useState('');
+  const [sourceSemesterId, setSourceSemesterId] = useState<number | undefined>(undefined);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editSchoolName, setEditSchoolName] = useState('');
 
   const { data: semesters = [] } = useQuery({ queryKey: ['semesters'], queryFn: getSemesters });
 
   const createMut = useMutation({
-    mutationFn: () => createSemester({ academicYear: year, term, startDate, schoolName }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['semesters'] }); setStartDate(''); },
+    mutationFn: () => createSemester({ academicYear: year, term, startDate, schoolName, sourceSemesterId }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['semesters'] }); setStartDate(''); setSourceSemesterId(undefined); },
   });
 
   const updateMut = useMutation({
@@ -76,6 +78,24 @@ export function SemesterTab() {
             <div>
               <Label>開學日</Label>
               <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+            </div>
+            <div>
+              <Label>複製自</Label>
+              <Select
+                value={sourceSemesterId?.toString() ?? ''}
+                onValueChange={v => setSourceSemesterId(v ? parseInt(v) : undefined)}
+              >
+                <SelectTrigger className="w-44">
+                  <SelectValue placeholder="（不複製）" />
+                </SelectTrigger>
+                <SelectContent>
+                  {semesters.map(s => (
+                    <SelectItem key={s.id} value={s.id.toString()}>
+                      {s.academicYear}年 第{s.term}學期{s.schoolName ? ` · ${s.schoolName}` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <Button onClick={() => createMut.mutate()} disabled={!startDate}>
               <Plus className="w-4 h-4 mr-1" /> 新增學期

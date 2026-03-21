@@ -39,7 +39,7 @@ public class TimetablePdfService(ScheduleDbContext db)
         var homeroomTeacherId = homeroom?.TeacherId;
         var subjectTeachers = slots
             .Where(s => s.CourseAssignment.TeacherId != homeroomTeacherId)
-            .Select(s => new { s.CourseAssignment.Course.Name, TeacherName = s.CourseAssignment.Teacher.Name })
+            .Select(s => new { s.CourseAssignment.Course.Name, TeacherName = s.CourseAssignment.Teacher?.Name ?? "未指定" })
             .Distinct()
             .OrderBy(x => x.Name)
             .ToList();

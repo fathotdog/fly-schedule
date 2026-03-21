@@ -1,193 +1,130 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getCourseAssignments, getClasses, getCourses, getTeachers, batchTeacherCourseAssignments } from '@/api/client';
+import { getCourseAssignments, getTeachers, getClasses, assignTeacher, unassignTeacher } from '@/api/client';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { SearchSelect } from '@/components/ui/search-select';
 import { Badge } from '@/components/ui/badge';
-import { Save, Trash2, AlertTriangle, Plus, UserPlus } from 'lucide-react';
+import { BookOpen, RotateCcw } from 'lucide-react';
 import { useScheduleStore } from '@/store/useScheduleStore';
-
-const EMPTY_ARR: never[] = [];
-
-interface AssignmentRow {
-  rowKey: string;
-  courseId: number;
-  courseName: string;
-  courseColorCode: string;
-  existingId: number | null;
-  classId: number;
-  weeklyPeriods: number;
-  scheduledPeriods: number;
-  markedForDeletion: boolean;
-  dirty: boolean;
-}
+import { ClaimUnassignedDialog } from './ClaimUnassignedDialog';
+import type { ClaimItem } from './ClaimUnassignedDialog';
+import { EMPTY_ARR } from '@/lib/constants';
 
 export function BatchAssignmentByTeacherPanel() {
   const qc = useQueryClient();
   const { currentSemesterId } = useScheduleStore();
   const [selectedTeacherId, setSelectedTeacherId] = useState(0);
-  const [rows, setRows] = useState<AssignmentRow[]>([]);
-  const [saveResult, setSaveResult] = useState<string | null>(null);
+  const [claimDialogOpen, setClaimDialogOpen] = useState(false);
 
   const { data: teachers = [] } = useQuery({ queryKey: ['teachers'], queryFn: getTeachers });
-  const { data: classes = [] } = useQuery({
-    queryKey: ['classes', currentSemesterId],
-    queryFn: () => getClasses(currentSemesterId!),
-    enabled: !!currentSemesterId,
-  });
-  const { data: courses = EMPTY_ARR } = useQuery({ queryKey: ['courses'], queryFn: getCourses });
 
-  const { data: assignments = EMPTY_ARR, isLoading: loadingAssignments } = useQuery({
+  const { data: claimedAssignments = EMPTY_ARR, isLoading: loadingClaimed } = useQuery({
     queryKey: ['courseAssignments', currentSemesterId, 'teacher', selectedTeacherId],
     queryFn: () => getCourseAssignments(currentSemesterId!, undefined, selectedTeacherId),
     enabled: !!currentSemesterId && selectedTeacherId > 0,
   });
 
-  // Rebuild rows whenever assignments change
-  useEffect(() => {
-    if (!selectedTeacherId) {
-      setRows([]);
-      return;
-    }
-    const newRows: AssignmentRow[] = assignments.map(a => ({
-      rowKey: String(a.id),
+  const { data: allAssignments = EMPTY_ARR } = useQuery({
+    queryKey: ['courseAssignments', currentSemesterId],
+    queryFn: () => getCourseAssignments(currentSemesterId!),
+    enabled: !!currentSemesterId && selectedTeacherId > 0,
+  });
+
+  const { data: classes = [] } = useQuery({
+    queryKey: ['classes', currentSemesterId],
+    queryFn: () => getClasses(currentSemesterId!),
+    enabled: !!currentSemesterId && selectedTeacherId > 0,
+  });
+
+  const unassignedAssignments = useMemo(
+    () => allAssignments.filter(a => a.teacherId === null),
+    [allAssignments]
+  );
+
+  const claimItems: ClaimItem[] = useMemo(() => {
+    const classMap = new Map(classes.map(c => [c.id, c]));
+    return unassignedAssignments.map(a => ({
       courseId: a.courseId,
       courseName: a.courseName,
       courseColorCode: a.courseColorCode,
-      existingId: a.id,
       classId: a.classId,
+      classDisplayName: a.classDisplayName,
+      gradeYear: classMap.get(a.classId)?.gradeYear ?? 0,
       weeklyPeriods: a.weeklyPeriods,
-      scheduledPeriods: a.scheduledPeriods,
-      markedForDeletion: false,
-      dirty: false,
     }));
-    setRows(newRows);
-    setSaveResult(null);
-  }, [assignments, selectedTeacherId]);
+  }, [unassignedAssignments, classes]);
 
-  const batchMut = useMutation({
-    mutationFn: () => {
-      const upserts = rows
-        .filter(r => r.dirty && !r.markedForDeletion && r.classId > 0 && r.weeklyPeriods > 0)
-        .map(r => ({ id: r.existingId ?? undefined, courseId: r.courseId, classId: r.classId, weeklyPeriods: r.weeklyPeriods }));
-      const deleteIds = rows
-        .filter(r => r.markedForDeletion && r.existingId !== null)
-        .map(r => r.existingId!);
-      return batchTeacherCourseAssignments(currentSemesterId!, { teacherId: selectedTeacherId, upserts, deleteIds });
-    },
-    onSuccess: (result) => {
+  const selectedTeacher = teachers.find(t => t.id === selectedTeacherId);
+  const totalClaimedPeriods = claimedAssignments.reduce((sum, a) => sum + a.weeklyPeriods, 0);
+  const maxPeriods = selectedTeacher?.maxWeeklyPeriods ?? 0;
+
+  const assignMut = useMutation({
+    mutationFn: (assignmentIds: number[]) =>
+      assignTeacher(currentSemesterId!, { assignmentIds, teacherId: selectedTeacherId }),
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['courseAssignments'] });
-      setSaveResult(`已儲存：新增 ${result.created} 筆、更新 ${result.updated} 筆、刪除 ${result.deleted} 筆`);
-    },
-    onError: (err: { response?: { data?: string } }) => {
-      const msg = err?.response?.data ?? '儲存失敗';
-      setSaveResult(`錯誤：${msg}`);
     },
   });
 
-  const updateRow = (rowKey: string, patch: Partial<AssignmentRow>) => {
-    setRows(prev => prev.map(r => r.rowKey === rowKey ? { ...r, ...patch, dirty: true } : r));
-    setSaveResult(null);
-  };
+  const unassignMut = useMutation({
+    mutationFn: (assignmentId: number) =>
+      unassignTeacher(currentSemesterId!, { assignmentIds: [assignmentId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['courseAssignments'] });
+    },
+  });
 
-  const toggleDelete = (rowKey: string) => {
-    setRows(prev => prev.map(r =>
-      r.rowKey === rowKey ? { ...r, markedForDeletion: !r.markedForDeletion, dirty: true } : r
-    ));
-    setSaveResult(null);
+  const handleClaim = (items: ClaimItem[]) => {
+    const ids = items.flatMap(item =>
+      unassignedAssignments
+        .filter(a => a.courseId === item.courseId && a.classId === item.classId)
+        .map(a => a.id)
+    );
+    if (ids.length > 0) assignMut.mutate(ids);
   };
-
-  const removeRow = (rowKey: string) => {
-    setRows(prev => prev.filter(r => r.rowKey !== rowKey));
-    setSaveResult(null);
-  };
-
-  const addRowForCourse = (courseId: number) => {
-    const course = courses.find(c => c.id === courseId);
-    if (!course) return;
-    const newRow: AssignmentRow = {
-      rowKey: `new-${courseId}-${Math.random().toString(36).slice(2)}`,
-      courseId: course.id,
-      courseName: course.name,
-      courseColorCode: course.colorCode,
-      existingId: null,
-      classId: 0,
-      weeklyPeriods: 0,
-      scheduledPeriods: 0,
-      markedForDeletion: false,
-      dirty: false,
-    };
-    setRows(prev => {
-      let lastIdx = -1;
-      prev.forEach((r, i) => { if (r.courseId === courseId) lastIdx = i; });
-      const next = [...prev];
-      next.splice(lastIdx + 1, 0, newRow);
-      return next;
-    });
-    setSaveResult(null);
-  };
-
-  const addNewCourseRow = () => {
-    const newRow: AssignmentRow = {
-      rowKey: `new-course-${Math.random().toString(36).slice(2)}`,
-      courseId: 0,
-      courseName: '',
-      courseColorCode: '#cccccc',
-      existingId: null,
-      classId: 0,
-      weeklyPeriods: 0,
-      scheduledPeriods: 0,
-      markedForDeletion: false,
-      dirty: false,
-    };
-    setRows(prev => [...prev, newRow]);
-    setSaveResult(null);
-  };
-
-  const setCourseForRow = (rowKey: string, courseId: number) => {
-    const course = courses.find(c => c.id === courseId);
-    if (!course) return;
-    updateRow(rowKey, { courseId: course.id, courseName: course.name, courseColorCode: course.colorCode });
-  };
-
-  const selectedTeacher = teachers.find(t => t.id === selectedTeacherId);
-  const totalPeriods = rows.filter(r => !r.markedForDeletion).reduce((sum, r) => sum + r.weeklyPeriods, 0);
-  const maxPeriods = selectedTeacher?.maxWeeklyPeriods ?? 0;
-  const hasPendingChanges = rows.some(r => r.dirty);
 
   if (!currentSemesterId) return <p className="text-on-surface-variant">請先選擇目前學期</p>;
 
-  const renderedCourses = new Set<number>();
-
   return (
     <div className="space-y-4">
+      {/* Teacher selector */}
       <Card>
         <CardContent className="pt-4">
-          <div className="flex items-end gap-4">
+          <div className="flex items-end gap-4 flex-wrap">
             <div>
               <Label>選擇教師</Label>
               <SearchSelect
                 value={String(selectedTeacherId)}
-                onValueChange={val => { setSelectedTeacherId(Number(val)); setSaveResult(null); }}
+                onValueChange={val => setSelectedTeacherId(Number(val))}
                 placeholder="選擇教師"
                 items={[
                   { value: '0', label: '選擇教師' },
-                  ...teachers.map(t => ({ value: String(t.id), label: t.name }))
+                  ...teachers.map(t => ({ value: String(t.id), label: t.name, group: t.staffTitleName || '其他' }))
                 ]}
                 className="w-40"
               />
             </div>
             {selectedTeacherId > 0 && selectedTeacher && (
-              <p className="text-sm text-muted-foreground pb-1">
-                已配 <span className="font-semibold text-foreground">{totalPeriods}</span> 節 / 上限 <span className="font-semibold text-foreground">{maxPeriods}</span> 節
-                {totalPeriods > maxPeriods && (
-                  <span className="ml-2 text-amber-600 font-medium">⚠ 超出上限</span>
-                )}
-              </p>
+              <>
+                <p className="text-sm text-muted-foreground pb-1">
+                  已認領 <span className="font-semibold text-foreground">{totalClaimedPeriods}</span> 節 / 上限 <span className="font-semibold text-foreground">{maxPeriods}</span> 節
+                  {totalClaimedPeriods > maxPeriods && (
+                    <span className="ml-2 text-amber-600 font-medium">⚠ 超出上限</span>
+                  )}
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setClaimDialogOpen(true)}
+                  className="pb-1"
+                >
+                  <BookOpen className="w-4 h-4 mr-1" />
+                  認領待配課程 ({unassignedAssignments.length})
+                </Button>
+              </>
             )}
           </div>
         </CardContent>
@@ -195,175 +132,66 @@ export function BatchAssignmentByTeacherPanel() {
 
       {selectedTeacherId > 0 && (
         <Card>
-          <CardContent className="pt-2">
-            {loadingAssignments ? (
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              已認領課程
+              <Badge variant="secondary">{claimedAssignments.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {loadingClaimed ? (
               <p className="text-sm text-muted-foreground py-4 text-center">載入中...</p>
+            ) : claimedAssignments.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">尚未認領任何課程</p>
             ) : (
-              <>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>課程</TableHead>
-                      <TableHead>班級</TableHead>
-                      <TableHead className="w-28">每週節數</TableHead>
-                      <TableHead className="w-16">已排</TableHead>
-                      <TableHead className="w-16">狀態</TableHead>
-                      <TableHead className="w-20">操作</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rows.map((row, idx) => {
-                      const isNewCourseRow = row.courseId === 0;
-                      const isFirstOfCourse = !isNewCourseRow && !renderedCourses.has(row.courseId);
-                      if (!isNewCourseRow && isFirstOfCourse) renderedCourses.add(row.courseId);
-                      const isLastOfCourse = isNewCourseRow || idx === rows.length - 1 || rows[idx + 1].courseId !== row.courseId;
-
-                      return (
-                        <TableRow
-                          key={row.rowKey}
-                          className={row.markedForDeletion ? 'opacity-40 line-through' : ''}
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>課程</TableHead>
+                    <TableHead>班級</TableHead>
+                    <TableHead className="w-20">每週節數</TableHead>
+                    <TableHead className="w-16 text-center">已排</TableHead>
+                    <TableHead className="w-16">操作</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {claimedAssignments.map(a => (
+                    <TableRow key={a.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: a.courseColorCode }} />
+                          {a.courseName}
+                        </div>
+                      </TableCell>
+                      <TableCell>{a.classDisplayName}</TableCell>
+                      <TableCell>{a.weeklyPeriods}</TableCell>
+                      <TableCell className="text-center">{a.scheduledPeriods > 0 ? a.scheduledPeriods : '—'}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => unassignMut.mutate(a.id)}
+                          disabled={unassignMut.isPending}
                         >
-                          <TableCell>
-                            {isNewCourseRow ? (
-                              <SearchSelect
-                                value={String(row.courseId)}
-                                onValueChange={val => setCourseForRow(row.rowKey, Number(val))}
-                                placeholder="選擇課程"
-                                items={[
-                                  { value: '0', label: '選擇課程' },
-                                  ...courses.map(c => ({ value: String(c.id), label: c.name }))
-                                ]}
-                                className="w-36"
-                              />
-                            ) : isFirstOfCourse ? (
-                              <div className="flex items-center gap-2">
-                                <span className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: row.courseColorCode }} />
-                                {row.courseName}
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-2 pl-5">
-                                <span className="text-muted-foreground text-xs">↳</span>
-                              </div>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {row.markedForDeletion ? (
-                              <span className="text-sm text-muted-foreground">—</span>
-                            ) : (
-                              <SearchSelect
-                                value={String(row.classId)}
-                                onValueChange={val => updateRow(row.rowKey, { classId: Number(val) })}
-                                placeholder="選擇班級"
-                                items={[
-                                  { value: '0', label: '（未指定）' },
-                                  ...classes.map(c => ({ value: String(c.id), label: c.displayName }))
-                                ]}
-                                className="w-32"
-                              />
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {row.markedForDeletion ? (
-                              <span className="text-sm text-muted-foreground">—</span>
-                            ) : (
-                              <Input
-                                type="number"
-                                min={1}
-                                max={20}
-                                value={row.weeklyPeriods || ''}
-                                placeholder="0"
-                                onChange={e => updateRow(row.rowKey, { weeklyPeriods: +e.target.value })}
-                                className="w-20"
-                              />
-                            )}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {row.scheduledPeriods > 0 ? row.scheduledPeriods : '—'}
-                          </TableCell>
-                          <TableCell>
-                            {row.markedForDeletion ? (
-                              <Badge variant="destructive" className="text-xs">待刪除</Badge>
-                            ) : row.existingId ? (
-                              <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">已配</Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-xs text-on-surface-variant">未配</Badge>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              {!isNewCourseRow && isLastOfCourse && (
-                                <button
-                                  onClick={() => addRowForCourse(row.courseId)}
-                                  className="text-muted-foreground hover:text-indigo-600 transition-colors"
-                                  title="新增分配（同課程另一個班級）"
-                                >
-                                  <UserPlus className="w-4 h-4" />
-                                </button>
-                              )}
-                              {row.existingId ? (
-                                <button
-                                  onClick={() => toggleDelete(row.rowKey)}
-                                  className="text-muted-foreground hover:text-destructive transition-colors"
-                                  title={row.markedForDeletion ? '取消刪除' : '移除配課'}
-                                >
-                                  {row.markedForDeletion ? (
-                                    <span className="text-xs underline">復原</span>
-                                  ) : (
-                                    <>
-                                      {row.scheduledPeriods > 0 && (
-                                        <AlertTriangle className="w-3 h-3 inline mr-1 text-amber-500" />
-                                      )}
-                                      <Trash2 className="w-4 h-4 inline" />
-                                    </>
-                                  )}
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => removeRow(row.rowKey)}
-                                  className="text-muted-foreground hover:text-destructive transition-colors"
-                                  title="移除此列"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-                <div className="pt-2 px-1">
-                  <button
-                    onClick={addNewCourseRow}
-                    className="flex items-center gap-1 text-sm text-muted-foreground hover:text-indigo-600 transition-colors"
-                  >
-                    <Plus className="w-4 h-4" />
-                    新增課程
-                  </button>
-                </div>
-              </>
+                          <RotateCcw className="w-3 h-3 mr-1" />
+                          退回
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             )}
           </CardContent>
         </Card>
       )}
 
-      {selectedTeacherId > 0 && (
-        <div className="flex items-center gap-4">
-          <Button
-            onClick={() => batchMut.mutate()}
-            disabled={!hasPendingChanges || batchMut.isPending}
-          >
-            <Save className="w-4 h-4 mr-1" />
-            {batchMut.isPending ? '儲存中...' : '儲存配課'}
-          </Button>
-          {saveResult && (
-            <p className={`text-sm ${saveResult.startsWith('錯誤') ? 'text-destructive' : 'text-green-600'}`}>
-              {saveResult}
-            </p>
-          )}
-        </div>
-      )}
+      <ClaimUnassignedDialog
+        open={claimDialogOpen}
+        onOpenChange={setClaimDialogOpen}
+        items={claimItems}
+        onClaim={handleClaim}
+      />
     </div>
   );
 }

@@ -7,14 +7,17 @@ namespace Schedule.Api.Services;
 
 public class TimetableService(ScheduleDbContext db, ConflictDetectionService conflictService)
 {
-    public async Task<TimetableGridResponse> GetClassTimetableAsync(int semesterId, int classId)
-    {
-        var slots = await db.TimetableSlots
+    private IQueryable<TimetableSlot> SlotWithFullIncludes() =>
+        db.TimetableSlots
             .Include(ts => ts.CourseAssignment).ThenInclude(ca => ca.Course)
             .Include(ts => ts.CourseAssignment).ThenInclude(ca => ca.Teacher)
             .Include(ts => ts.CourseAssignment).ThenInclude(ca => ca.Class)
             .Include(ts => ts.Period)
-            .Include(ts => ts.RoomBooking).ThenInclude(rb => rb!.SpecialRoom)
+            .Include(ts => ts.RoomBooking).ThenInclude(rb => rb!.SpecialRoom);
+
+    public async Task<TimetableGridResponse> GetClassTimetableAsync(int semesterId, int classId)
+    {
+        var slots = await SlotWithFullIncludes()
             .Where(ts => ts.CourseAssignment.SemesterId == semesterId
                          && ts.CourseAssignment.ClassId == classId)
             .OrderBy(ts => ts.DayOfWeek).ThenBy(ts => ts.Period.PeriodNumber)
@@ -29,7 +32,7 @@ public class TimetableService(ScheduleDbContext db, ConflictDetectionService con
             .Where(ca => ca.SemesterId == semesterId && ca.ClassId == classId)
             .Select(ca => new CourseAssignmentProgressDto(
                 ca.Id, ca.CourseId, ca.Course.Name, ca.Course.ColorCode,
-                ca.TeacherId, ca.Teacher.Name,
+                ca.TeacherId, ca.Teacher != null ? ca.Teacher.Name : null,
                 ca.ClassId, ca.Class.DisplayName,
                 ca.WeeklyPeriods, ca.TimetableSlots.Count))
             .ToListAsync();
@@ -42,12 +45,7 @@ public class TimetableService(ScheduleDbContext db, ConflictDetectionService con
         var teacher = await db.Teachers.FindAsync(teacherId);
         if (teacher is null) return new TeacherScheduleResponse(teacherId, "", []);
 
-        var slots = await db.TimetableSlots
-            .Include(ts => ts.CourseAssignment).ThenInclude(ca => ca.Course)
-            .Include(ts => ts.CourseAssignment).ThenInclude(ca => ca.Teacher)
-            .Include(ts => ts.CourseAssignment).ThenInclude(ca => ca.Class)
-            .Include(ts => ts.Period)
-            .Include(ts => ts.RoomBooking).ThenInclude(rb => rb!.SpecialRoom)
+        var slots = await SlotWithFullIncludes()
             .Where(ts => ts.CourseAssignment.SemesterId == semesterId
                          && ts.CourseAssignment.TeacherId == teacherId)
             .OrderBy(ts => ts.DayOfWeek).ThenBy(ts => ts.Period.PeriodNumber)
@@ -87,13 +85,7 @@ public class TimetableService(ScheduleDbContext db, ConflictDetectionService con
         await db.SaveChangesAsync();
 
         // Reload with includes
-        var loaded = await db.TimetableSlots
-            .Include(ts => ts.CourseAssignment).ThenInclude(ca => ca.Course)
-            .Include(ts => ts.CourseAssignment).ThenInclude(ca => ca.Teacher)
-            .Include(ts => ts.CourseAssignment).ThenInclude(ca => ca.Class)
-            .Include(ts => ts.Period)
-            .Include(ts => ts.RoomBooking).ThenInclude(rb => rb!.SpecialRoom)
-            .FirstAsync(ts => ts.Id == slot.Id);
+        var loaded = await SlotWithFullIncludes().FirstAsync(ts => ts.Id == slot.Id);
 
         return (MapSlotDto(loaded), []);
     }
@@ -114,11 +106,88 @@ public class TimetableService(ScheduleDbContext db, ConflictDetectionService con
         return true;
     }
 
+    public async Task<(TimetableSlotDto? Slot, List<ConflictInfo> Conflicts)> MoveSlotAsync(
+        int slotId, MoveTimetableSlotRequest request)
+    {
+        var slot = await SlotWithFullIncludes().FirstOrDefaultAsync(ts => ts.Id == slotId);
+
+        if (slot is null)
+            return (null, [new ConflictInfo("NotFound", "找不到排課資料")]);
+
+        var conflicts = await conflictService.CheckConflictsAsync(
+            slot.CourseAssignmentId, request.DayOfWeek, request.PeriodId,
+            slot.RoomBooking?.SpecialRoomId, excludeSlotIds: [slotId]);
+
+        if (conflicts.Count > 0)
+            return (null, conflicts);
+
+        slot.DayOfWeek = request.DayOfWeek;
+        slot.PeriodId = request.PeriodId;
+        await db.SaveChangesAsync();
+
+        // Refresh Period navigation property after PeriodId change
+        await db.Entry(slot).Reference(s => s.Period).LoadAsync();
+
+        return (MapSlotDto(slot), []);
+    }
+
+    public async Task<(List<TimetableSlotDto> Slots, List<ConflictInfo> Conflicts)> SwapSlotsAsync(
+        SwapTimetableSlotsRequest req)
+    {
+        var (slot1, slot2, notFound) = await LoadSwapSlots(req.SlotId1, req.SlotId2);
+        if (notFound is not null) return ([], notFound);
+
+        var allConflicts = await CheckSwapConflictsForSlots(slot1!, slot2!);
+        if (allConflicts.Count > 0)
+            return ([], allConflicts);
+
+        (slot1!.DayOfWeek, slot2!.DayOfWeek) = (slot2.DayOfWeek, slot1.DayOfWeek);
+        (slot1.PeriodId, slot2.PeriodId) = (slot2.PeriodId, slot1.PeriodId);
+
+        await db.SaveChangesAsync();
+
+        var reloaded = await SlotWithFullIncludes()
+            .Where(ts => ts.Id == slot1.Id || ts.Id == slot2.Id)
+            .ToListAsync();
+
+        return ([MapSlotDto(reloaded.First(ts => ts.Id == slot1.Id)), MapSlotDto(reloaded.First(ts => ts.Id == slot2.Id))], []);
+    }
+
+    public async Task<List<ConflictInfo>> CheckSwapConflictsAsync(int slotId1, int slotId2)
+    {
+        var (slot1, slot2, notFound) = await LoadSwapSlots(slotId1, slotId2);
+        if (notFound is not null) return notFound;
+        return await CheckSwapConflictsForSlots(slot1!, slot2!);
+    }
+
+    private async Task<(TimetableSlot? Slot1, TimetableSlot? Slot2, List<ConflictInfo>? NotFound)> LoadSwapSlots(int slotId1, int slotId2)
+    {
+        var both = await SlotWithFullIncludes()
+            .Where(ts => ts.Id == slotId1 || ts.Id == slotId2)
+            .ToListAsync();
+        var slot1 = both.FirstOrDefault(ts => ts.Id == slotId1);
+        var slot2 = both.FirstOrDefault(ts => ts.Id == slotId2);
+        if (slot1 is null || slot2 is null)
+            return (null, null, [new ConflictInfo("NotFound", "找不到排課資料")]);
+        return (slot1, slot2, null);
+    }
+
+    private async Task<List<ConflictInfo>> CheckSwapConflictsForSlots(TimetableSlot slot1, TimetableSlot slot2)
+    {
+        var excludeIds = new[] { slot1.Id, slot2.Id };
+        var t1 = conflictService.CheckConflictsAsync(slot1.CourseAssignmentId, slot2.DayOfWeek, slot2.PeriodId,
+            slot1.RoomBooking?.SpecialRoomId, excludeSlotIds: excludeIds);
+        var t2 = conflictService.CheckConflictsAsync(slot2.CourseAssignmentId, slot1.DayOfWeek, slot1.PeriodId,
+            slot2.RoomBooking?.SpecialRoomId, excludeSlotIds: excludeIds);
+        await Task.WhenAll(t1, t2);
+        return t1.Result.Concat(t2.Result).ToList();
+    }
+
     private static TimetableSlotDto MapSlotDto(TimetableSlot ts) => new(
         ts.Id, ts.CourseAssignmentId,
         ts.DayOfWeek, ts.PeriodId, ts.Period.PeriodNumber,
         ts.CourseAssignment.Course.Name, ts.CourseAssignment.Course.ColorCode,
-        ts.CourseAssignment.Teacher.Name, ts.CourseAssignment.TeacherId,
+        ts.CourseAssignment.Teacher != null ? ts.CourseAssignment.Teacher.Name : null, ts.CourseAssignment.TeacherId,
         ts.CourseAssignment.Class.DisplayName, ts.CourseAssignment.ClassId,
         ts.RoomBooking?.SpecialRoomId, ts.RoomBooking?.SpecialRoom?.Name);
 }

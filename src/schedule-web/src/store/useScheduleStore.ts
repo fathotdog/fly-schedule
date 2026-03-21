@@ -7,11 +7,13 @@ interface ScheduleState {
   selectedCourseAssignmentId: number | null;
   selectedTeacherId: number | null;
   activeTab: string;
+  sidebarCollapsed: boolean;
   setCurrentSemesterId: (id: number | null, name?: string | null) => void;
   setSelectedClassId: (id: number | null) => void;
   setSelectedCourseAssignmentId: (id: number | null) => void;
   setSelectedTeacherId: (id: number | null) => void;
   setActiveTab: (tab: string) => void;
+  toggleSidebar: () => void;
 }
 
 export const useScheduleStore = create<ScheduleState>((set) => ({
@@ -20,10 +22,12 @@ export const useScheduleStore = create<ScheduleState>((set) => ({
   selectedClassId: null,
   selectedCourseAssignmentId: null,
   selectedTeacherId: null,
-  activeTab: 'timetable',
+  activeTab: 'dashboard',
+  sidebarCollapsed: false,
   setCurrentSemesterId: (id, name) => set({ currentSemesterId: id, currentSemesterName: name || null, selectedClassId: null }),
   setSelectedClassId: (id) => set({ selectedClassId: id, selectedCourseAssignmentId: null }),
   setSelectedCourseAssignmentId: (id) => set({ selectedCourseAssignmentId: id }),
   setSelectedTeacherId: (id) => set({ selectedTeacherId: id }),
-  setActiveTab: (tab) => set({ activeTab: tab }),
+  setActiveTab: (tab) => set({ activeTab: tab, ...(tab === 'timetable' ? { sidebarCollapsed: true } : {}) }),
+  toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
 }));

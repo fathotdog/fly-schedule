@@ -46,13 +46,15 @@ public class ScheduleDbContext(DbContextOptions<ScheduleDbContext> options) : Db
             e.HasOne(t => t.StaffTitle).WithMany(st => st.Teachers).HasForeignKey(t => t.StaffTitleId);
         });
 
-        // CourseAssignment — 同班同課可有多位教師，但同教師不可重複
+        // CourseAssignment — 同班同課可有多位教師，但同教師不可重複；TeacherId 可為 null（未指定教師）
         modelBuilder.Entity<CourseAssignment>(e =>
         {
-            e.HasIndex(ca => new { ca.SemesterId, ca.CourseId, ca.ClassId, ca.TeacherId }).IsUnique();
+            // 只在 TeacherId 有值時套用唯一約束，NULL 值不參與唯一索引
+            e.HasIndex(ca => new { ca.SemesterId, ca.CourseId, ca.ClassId, ca.TeacherId }).IsUnique()
+                .HasFilter("\"TeacherId\" IS NOT NULL");
             e.HasOne(ca => ca.Semester).WithMany(s => s.CourseAssignments).HasForeignKey(ca => ca.SemesterId);
             e.HasOne(ca => ca.Course).WithMany(c => c.CourseAssignments).HasForeignKey(ca => ca.CourseId);
-            e.HasOne(ca => ca.Teacher).WithMany(t => t.CourseAssignments).HasForeignKey(ca => ca.TeacherId);
+            e.HasOne(ca => ca.Teacher).WithMany(t => t.CourseAssignments).HasForeignKey(ca => ca.TeacherId).IsRequired(false);
             e.HasOne(ca => ca.Class).WithMany(c => c.CourseAssignments).HasForeignKey(ca => ca.ClassId);
         });
 
@@ -103,16 +105,17 @@ public class ScheduleDbContext(DbContextOptions<ScheduleDbContext> options) : Db
 
         // Default courses
         modelBuilder.Entity<Course>().HasData(
-            new Course { Id = 1, Name = "國文", ColorCode = "#ef4444" },
+            new Course { Id = 1, Name = "國語", ColorCode = "#ef4444" },
             new Course { Id = 2, Name = "英語", ColorCode = "#3b82f6" },
             new Course { Id = 3, Name = "數學", ColorCode = "#22c55e" },
             new Course { Id = 4, Name = "社會", ColorCode = "#f59e0b" },
-            new Course { Id = 5, Name = "自然科學", ColorCode = "#8b5cf6" },
-            new Course { Id = 6, Name = "科技", ColorCode = "#06b6d4" },
+            new Course { Id = 5, Name = "自然", ColorCode = "#8b5cf6" },
+            new Course { Id = 6, Name = "本土語言", ColorCode = "#06b6d4" },
             new Course { Id = 7, Name = "藝術", ColorCode = "#ec4899" },
             new Course { Id = 8, Name = "健康與體育", ColorCode = "#14b8a6", RequiresSpecialRoom = true },
             new Course { Id = 9, Name = "綜合活動", ColorCode = "#f97316" },
-            new Course { Id = 10, Name = "彈性學習", ColorCode = "#64748b" }
+            new Course { Id = 10, Name = "彈性學習", ColorCode = "#64748b" },
+            new Course { Id = 11, Name = "生活", ColorCode = "#84cc16" }
         );
     }
 }

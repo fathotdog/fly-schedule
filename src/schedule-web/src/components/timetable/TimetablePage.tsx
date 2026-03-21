@@ -38,12 +38,12 @@ export function TimetablePage() {
       </div>
 
       {/* Center - Timetable grid */}
-      <div className="flex-1 overflow-auto bg-surface-container-lowest rounded-2xl border border-outline-variant/10 p-4">
+      <div className="flex-1 min-w-0 overflow-auto bg-surface-container-lowest rounded-2xl border border-outline-variant/10 p-4">
         <TimetableGrid />
       </div>
 
       {/* Right panel - Teacher schedule */}
-      <div className="w-80 shrink-0 bg-surface-container-lowest rounded-2xl border border-outline-variant/10 p-4 overflow-auto">
+      <div className="w-96 shrink-0 bg-surface-container-lowest rounded-2xl border border-outline-variant/10 p-4 overflow-auto">
         <TeacherSchedulePanel />
       </div>
     </div>

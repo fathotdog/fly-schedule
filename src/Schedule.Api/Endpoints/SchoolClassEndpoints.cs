@@ -7,7 +7,7 @@ namespace Schedule.Api.Endpoints;
 
 public static class SchoolClassEndpoints
 {
-    private static readonly string[] GradeNames = ["", "", "", "", "", "", "", "七", "八", "九"];
+    private static readonly string[] GradeNames = ["", "一", "二", "三", "四", "五", "六"];
     private static readonly string[] SectionNames = ["", "一", "二", "三", "四", "五", "六", "七", "八", "九", "十",
         "十一", "十二", "十三", "十四", "十五"];
 
@@ -42,7 +42,7 @@ public static class SchoolClassEndpoints
             var classes = new List<SchoolClass>();
             for (var s = 1; s <= req.NumberOfSections; s++)
             {
-                var gradeName = req.GradeYear >= 7 && req.GradeYear <= 9 ? GradeNames[req.GradeYear] : req.GradeYear.ToString();
+                var gradeName = req.GradeYear >= 1 && req.GradeYear <= 6 ? GradeNames[req.GradeYear] : req.GradeYear.ToString();
                 var sectionName = s <= 15 ? SectionNames[s] : s.ToString();
                 classes.Add(new SchoolClass
                 {

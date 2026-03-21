@@ -7,7 +7,7 @@ namespace Schedule.Api.Services;
 public class ConflictDetectionService(ScheduleDbContext db)
 {
     public async Task<List<ConflictInfo>> CheckConflictsAsync(
-        int courseAssignmentId, int dayOfWeek, int periodId, int? specialRoomId)
+        int courseAssignmentId, int dayOfWeek, int periodId, int? specialRoomId, int[]? excludeSlotIds = null)
     {
         var conflicts = new List<ConflictInfo>();
 
@@ -25,7 +25,8 @@ public class ConflictDetectionService(ScheduleDbContext db)
 
         // 0. Period limit check
         var scheduledCount = await db.TimetableSlots
-            .CountAsync(ts => ts.CourseAssignmentId == courseAssignmentId);
+            .CountAsync(ts => ts.CourseAssignmentId == courseAssignmentId
+                              && (excludeSlotIds == null || !excludeSlotIds.Contains(ts.Id)));
 
         if (scheduledCount >= assignment.WeeklyPeriods)
         {
@@ -34,19 +35,23 @@ public class ConflictDetectionService(ScheduleDbContext db)
             return conflicts;
         }
 
-        // 1. Teacher conflict
-        var teacherConflict = await db.TimetableSlots
-            .Include(ts => ts.CourseAssignment).ThenInclude(ca => ca.Course)
-            .Include(ts => ts.CourseAssignment).ThenInclude(ca => ca.Class)
-            .Where(ts => ts.CourseAssignment.TeacherId == assignment.TeacherId
-                         && ts.DayOfWeek == dayOfWeek
-                         && ts.PeriodId == periodId)
-            .FirstOrDefaultAsync();
-
-        if (teacherConflict is not null)
+        // 1. Teacher conflict（無教師時略過）
+        if (assignment.TeacherId.HasValue)
         {
-            conflicts.Add(new ConflictInfo("TeacherConflict",
-                $"{assignment.Teacher.Name}已在此時段教{teacherConflict.CourseAssignment.Class.DisplayName}{teacherConflict.CourseAssignment.Course.Name}"));
+            var teacherConflict = await db.TimetableSlots
+                .Include(ts => ts.CourseAssignment).ThenInclude(ca => ca.Course)
+                .Include(ts => ts.CourseAssignment).ThenInclude(ca => ca.Class)
+                .Where(ts => ts.CourseAssignment.TeacherId == assignment.TeacherId
+                             && ts.DayOfWeek == dayOfWeek
+                             && ts.PeriodId == periodId
+                             && (excludeSlotIds == null || !excludeSlotIds.Contains(ts.Id)))
+                .FirstOrDefaultAsync();
+
+            if (teacherConflict is not null)
+            {
+                conflicts.Add(new ConflictInfo("TeacherConflict",
+                    $"{assignment.Teacher!.Name}已在此時段教{teacherConflict.CourseAssignment.Class.DisplayName}{teacherConflict.CourseAssignment.Course.Name}"));
+            }
         }
 
         // 2. Class conflict
@@ -55,13 +60,14 @@ public class ConflictDetectionService(ScheduleDbContext db)
             .Include(ts => ts.CourseAssignment).ThenInclude(ca => ca.Teacher)
             .Where(ts => ts.CourseAssignment.ClassId == assignment.ClassId
                          && ts.DayOfWeek == dayOfWeek
-                         && ts.PeriodId == periodId)
+                         && ts.PeriodId == periodId
+                         && (excludeSlotIds == null || !excludeSlotIds.Contains(ts.Id)))
             .FirstOrDefaultAsync();
 
         if (classConflict is not null)
         {
             conflicts.Add(new ConflictInfo("ClassConflict",
-                $"{assignment.Class.DisplayName}此時段已有{classConflict.CourseAssignment.Course.Name}（{classConflict.CourseAssignment.Teacher.Name}）"));
+                $"{assignment.Class.DisplayName}此時段已有{classConflict.CourseAssignment.Course.Name}（{classConflict.CourseAssignment.Teacher?.Name ?? "未指定教師"}）"));
         }
 
         // 3. Room conflict
@@ -73,7 +79,8 @@ public class ConflictDetectionService(ScheduleDbContext db)
                 .Include(rb => rb.SpecialRoom)
                 .Where(rb => rb.SpecialRoomId == specialRoomId.Value
                              && rb.TimetableSlot.DayOfWeek == dayOfWeek
-                             && rb.TimetableSlot.PeriodId == periodId)
+                             && rb.TimetableSlot.PeriodId == periodId
+                             && (excludeSlotIds == null || !excludeSlotIds.Contains(rb.TimetableSlotId)))
                 .FirstOrDefaultAsync();
 
             if (roomConflict is not null)

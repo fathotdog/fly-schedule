@@ -203,7 +203,7 @@ public class ExcelService(ScheduleDbContext db)
         {
             ws.Cell(i + 2, 1).Value = assignments[i].Class.DisplayName;
             ws.Cell(i + 2, 2).Value = assignments[i].Course.Name;
-            ws.Cell(i + 2, 3).Value = assignments[i].Teacher.Name;
+            ws.Cell(i + 2, 3).Value = assignments[i].Teacher?.Name ?? "";
             ws.Cell(i + 2, 4).Value = assignments[i].WeeklyPeriods;
         }
 

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Schedule.Api.Data;
 
@@ -10,9 +11,11 @@ using Schedule.Api.Data;
 namespace Schedule.Api.Migrations
 {
     [DbContext(typeof(ScheduleDbContext))]
-    partial class ScheduleDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260321011935_AllowNullTeacherId")]
+    partial class AllowNullTeacherId
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.5");
@@ -43,7 +46,7 @@ namespace Schedule.Api.Migrations
                         {
                             Id = 1,
                             ColorCode = "#ef4444",
-                            Name = "國語",
+                            Name = "國文",
                             RequiresSpecialRoom = false
                         },
                         new
@@ -71,14 +74,14 @@ namespace Schedule.Api.Migrations
                         {
                             Id = 5,
                             ColorCode = "#8b5cf6",
-                            Name = "自然",
+                            Name = "自然科學",
                             RequiresSpecialRoom = false
                         },
                         new
                         {
                             Id = 6,
                             ColorCode = "#06b6d4",
-                            Name = "本土語言",
+                            Name = "科技",
                             RequiresSpecialRoom = false
                         },
                         new
@@ -107,13 +110,6 @@ namespace Schedule.Api.Migrations
                             Id = 10,
                             ColorCode = "#64748b",
                             Name = "彈性學習",
-                            RequiresSpecialRoom = false
-                        },
-                        new
-                        {
-                            Id = 11,
-                            ColorCode = "#84cc16",
-                            Name = "生活",
                             RequiresSpecialRoom = false
                         });
                 });

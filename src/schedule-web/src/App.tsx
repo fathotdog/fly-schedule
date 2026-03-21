@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
+import { cn } from '@/lib/utils';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { getSemesters, setCurrentSemester } from '@/api/client';
 
@@ -15,6 +16,7 @@ import { PeriodTab } from '@/components/setup/PeriodTab';
 import { HomeroomTab } from '@/components/setup/HomeroomTab';
 import { SpecialRoomTab } from '@/components/setup/SpecialRoomTab';
 import { TimetablePage } from '@/components/timetable/TimetablePage';
+import { DashboardPage } from '@/components/dashboard/DashboardPage';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Navbar } from '@/components/layout/Navbar';
 
@@ -23,7 +25,7 @@ const queryClient = new QueryClient({
 });
 
 function AppContent() {
-  const { currentSemesterId, setCurrentSemesterId, activeTab, setActiveTab } = useScheduleStore();
+  const { currentSemesterId, setCurrentSemesterId, activeTab, setActiveTab, sidebarCollapsed } = useScheduleStore();
   const qc = useQueryClient();
 
   const { data: semesters = [] } = useQuery({ queryKey: ['semesters'], queryFn: getSemesters });
@@ -50,8 +52,9 @@ function AppContent() {
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
       <Navbar semesters={semesters} currentSemesterId={currentSemesterId} onSemesterChange={handleSemesterChange} />
 
-      <main className="ml-64 pt-16">
+      <main className={cn('pt-16 transition-all duration-300', sidebarCollapsed ? 'ml-16' : 'ml-64')}>
         <div className={isTimetable ? 'h-[calc(100vh-4rem)] p-4' : 'p-6'}>
+          {activeTab === 'dashboard' && <DashboardPage />}
           {activeTab === 'semester' && <SemesterTab />}
           {activeTab === 'classes' && <ClassTab />}
           {activeTab === 'schoolDays' && <SchoolDayTab />}

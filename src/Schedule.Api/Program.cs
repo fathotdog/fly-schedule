@@ -15,6 +15,7 @@ builder.Services.AddScoped<ConflictDetectionService>();
 builder.Services.AddScoped<TimetableService>();
 builder.Services.AddScoped<TimetablePdfService>();
 builder.Services.AddScoped<ExcelService>();
+builder.Services.AddScoped<DashboardService>();
 
 builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
@@ -54,6 +55,7 @@ app.MapPeriodEndpoints();
 app.MapHomeroomEndpoints();
 app.MapSpecialRoomEndpoints();
 app.MapTimetableEndpoints();
+app.MapDashboardEndpoints();
 
 app.Run();
 

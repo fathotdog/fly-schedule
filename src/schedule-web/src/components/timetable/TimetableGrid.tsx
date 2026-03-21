@@ -1,17 +1,36 @@
+import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getTimetable, getPeriods, createTimetableSlot, deleteTimetableSlot } from '@/api/client';
+import { getTimetable, getPeriods, createTimetableSlot, deleteTimetableSlot, moveTimetableSlot, swapTimetableSlots, checkConflicts, checkSwapConflicts } from '@/api/client';
 import { useScheduleStore } from '@/store/useScheduleStore';
-import { Plus, Minus, LayoutGrid } from 'lucide-react';
-import type { TimetableSlot } from '@/api/types';
-import { toast } from 'sonner';
-import axios from 'axios';
-import { DAY_NAMES } from '@/lib/constants';
+import { Plus, Minus, LayoutGrid, GripVertical, User } from 'lucide-react';
+import type { TimetableSlot, ConflictInfo } from '@/api/types';
+import { DAY_NAMES, SCHOOL_DAYS } from '@/lib/constants';
+import { cellKey, handleConflictError, invalidateTimetableQueries, makeSlotMap } from '@/lib/timetable';
+import { cn } from '@/lib/utils';
 
 export function TimetableGrid() {
   const qc = useQueryClient();
   const { currentSemesterId, selectedClassId, selectedCourseAssignmentId, setSelectedCourseAssignmentId, setSelectedTeacherId } = useScheduleStore();
+  const [draggedSlot, setDraggedSlot] = useState<TimetableSlot | null>(null);
+  const [dragOverCell, setDragOverCell] = useState<string | null>(null);
+  const [dragConflicts, setDragConflicts] = useState<ConflictInfo[] | null>(null);
+  const [conflictCellKey, setConflictCellKey] = useState<string | null>(null);
+  const checkTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  const { data } = useQuery({
+  const resetDragState = () => {
+    if (checkTimeoutRef.current) clearTimeout(checkTimeoutRef.current);
+    if (abortRef.current) abortRef.current.abort();
+    setDragConflicts(null);
+    setConflictCellKey(null);
+  };
+
+  useEffect(() => () => {
+    if (checkTimeoutRef.current) clearTimeout(checkTimeoutRef.current);
+    if (abortRef.current) abortRef.current.abort();
+  }, []);
+
+  const { data, isLoading: isTimetableLoading } = useQuery({
     queryKey: ['timetable', currentSemesterId, selectedClassId],
     queryFn: () => getTimetable(currentSemesterId!, selectedClassId!),
     enabled: !!currentSemesterId && !!selectedClassId,
@@ -31,8 +50,7 @@ export function TimetableGrid() {
         periodId: params.periodId,
       }),
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ['timetable'] });
-      qc.invalidateQueries({ queryKey: ['teacherSchedule'] });
+      await invalidateTimetableQueries(qc);
       const updated = qc.getQueryData<{ courseAssignments: { id: number; scheduledPeriods: number; weeklyPeriods: number }[] }>(
         ['timetable', currentSemesterId, selectedClassId]
       );
@@ -41,36 +59,71 @@ export function TimetableGrid() {
         setSelectedCourseAssignmentId(null);
       }
     },
-    onError: (err) => {
-      if (axios.isAxiosError(err) && err.response?.status === 409) {
-        const conflicts = err.response.data?.conflicts as { type: string; message: string }[];
-        conflicts?.forEach(c => toast.error(c.message));
-      } else {
-        toast.error('排課失敗');
-      }
-    },
+    onError: (err) => handleConflictError(err, '排課失敗'),
   });
 
   const removeMut = useMutation({
     mutationFn: deleteTimetableSlot,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['timetable'] });
-      qc.invalidateQueries({ queryKey: ['teacherSchedule'] });
-    },
+    onSuccess: () => invalidateTimetableQueries(qc),
+  });
+
+  const moveMut = useMutation({
+    mutationFn: (params: { slotId: number; dayOfWeek: number; periodId: number }) =>
+      moveTimetableSlot(params.slotId, { dayOfWeek: params.dayOfWeek, periodId: params.periodId }),
+    onSuccess: () => invalidateTimetableQueries(qc),
+    onError: (err) => handleConflictError(err, '移動排課失敗'),
+  });
+
+  const swapMut = useMutation({
+    mutationFn: (params: { slotId1: number; slotId2: number }) => swapTimetableSlots(params),
+    onSuccess: () => invalidateTimetableQueries(qc),
+    onError: (err) => handleConflictError(err, '交換排課失敗'),
   });
 
   if (!selectedClassId) {
     return (
-      <div className="bg-surface-container-low rounded-2xl p-8 text-center flex flex-col items-center gap-3">
+      <div className="bg-surface-container-low rounded-2xl p-8 flex flex-col items-center gap-6">
         <LayoutGrid className="w-12 h-12 text-primary/30" />
-        <span className="text-on-surface-variant">請選擇班級以檢視課表</span>
+        <div className="space-y-3 w-full max-w-xs">
+          {[
+            { step: 1, text: '在左側選擇班級' },
+            { step: 2, text: '點選配課項目（課程 + 教師）' },
+            { step: 3, text: '點擊空格排入節次' },
+          ].map(({ step, text }) => (
+            <div key={step} className="flex items-center gap-3 text-sm text-on-surface-variant">
+              <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0">{step}</span>
+              <span>{text}</span>
+            </div>
+          ))}
+          <div className="flex items-center gap-3 text-xs text-on-surface-variant/60 mt-1 pl-9">
+            <GripVertical className="w-3.5 h-3.5 shrink-0" />
+            <span>已排節次可拖曳移動位置</span>
+          </div>
+          <div className="flex items-center gap-3 text-xs text-on-surface-variant/60 pl-9">
+            <User className="w-3.5 h-3.5 shrink-0" />
+            <span>點擊教師名稱可查看課表，並直接在教師課表上排課</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isTimetableLoading) {
+    return (
+      <div className="overflow-auto">
+        <div className="space-y-1.5">
+          <div className="h-8 bg-muted rounded animate-pulse" />
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="h-20 bg-muted/60 rounded animate-pulse" />
+          ))}
+        </div>
       </div>
     );
   }
 
   const slots = data?.slots ?? [];
 
-  const slotMap = new Map(slots.map(s => [`${s.dayOfWeek}-${s.periodId}`, s]));
+  const slotMap = makeSlotMap(slots);
   const getSlot = (day: number, periodId: number): TimetableSlot | undefined =>
     slotMap.get(`${day}-${periodId}`);
 
@@ -92,18 +145,96 @@ export function TimetableGrid() {
                 <div className="text-primary text-sm">{period.periodNumber}</div>
                 <div className="text-[10px] text-on-surface-variant">{period.startTime?.substring(0, 5)}</div>
               </td>
-              {[1, 2, 3, 4, 5].map(day => {
+              {SCHOOL_DAYS.map(day => {
                 const slot = getSlot(day, period.id);
+                const key = cellKey(day, period.id);
+                const isDropTarget = dragOverCell === key && !!draggedSlot && (!slot || slot.id !== draggedSlot.id);
+                const isDropTargetEmpty = !slot && isDropTarget;
+                const isDropTargetSwap = !!slot && isDropTarget;
+                const hasConflict = conflictCellKey === key && !!dragConflicts && dragConflicts.length > 0;
                 return (
-                  <td key={day} className="p-0 h-20 relative rounded-lg border border-outline-variant/15 hover:border-primary/30 transition-shadow">
+                  <td
+                    key={day}
+                    className={cn(
+                      'p-0 h-20 relative rounded-lg border border-outline-variant/15 hover:border-primary/30 transition-shadow',
+                      isDropTargetEmpty && !hasConflict && 'border-primary/50 bg-primary/5 ring-2 ring-primary/30',
+                      isDropTargetSwap && !hasConflict && 'border-amber-500/50 bg-amber-50/50 ring-2 ring-amber-500/30',
+                      hasConflict && isDropTarget && 'border-red-500/50 bg-red-50/50 ring-2 ring-red-500/30'
+                    )}
+                    onDragOver={(e) => {
+                      if (draggedSlot && (!slot || slot.id !== draggedSlot.id)) e.preventDefault();
+                    }}
+                    onDragEnter={() => {
+                      if (!draggedSlot || (slot && slot.id === draggedSlot.id)) return;
+                      setDragOverCell(key);
+                      resetDragState();
+                      const captured = { draggedSlot, slot, key, day, periodId: period.id };
+                      checkTimeoutRef.current = setTimeout(async () => {
+                        const ctrl = new AbortController();
+                        abortRef.current = ctrl;
+                        try {
+                          let result: { conflicts: ConflictInfo[]; hasConflicts: boolean };
+                          if (!captured.slot) {
+                            result = await checkConflicts(currentSemesterId!, {
+                              courseAssignmentId: captured.draggedSlot.courseAssignmentId,
+                              dayOfWeek: captured.day,
+                              periodId: captured.periodId,
+                              excludeSlotIds: [captured.draggedSlot.id],
+                            });
+                          } else {
+                            result = await checkSwapConflicts(captured.draggedSlot.id, captured.slot.id);
+                          }
+                          if (!ctrl.signal.aborted) {
+                            setDragConflicts(result.conflicts);
+                            setConflictCellKey(captured.key);
+                          }
+                        } catch {
+                          // aborted or network error — ignore
+                        }
+                      }, 150);
+                    }}
+                    onDragLeave={(e) => {
+                      if ((e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) return;
+                      setDragOverCell(null);
+                      resetDragState();
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      resetDragState();
+                      if (draggedSlot && !slot) {
+                        moveMut.mutate({ slotId: draggedSlot.id, dayOfWeek: day, periodId: period.id });
+                      } else if (draggedSlot && slot && slot.id !== draggedSlot.id) {
+                        swapMut.mutate({ slotId1: draggedSlot.id, slotId2: slot.id });
+                      }
+                      setDraggedSlot(null);
+                      setDragOverCell(null);
+                    }}
+                  >
+                    {conflictCellKey === key && dragConflicts && dragConflicts.length > 0 && (
+                      <div className="absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full z-50
+                        bg-red-100 border border-red-300 text-red-800 text-xs rounded-lg px-3 py-2 shadow-lg
+                        pointer-events-none whitespace-nowrap max-w-[250px]">
+                        {dragConflicts.map((c, i) => <div key={i}>{c.message}</div>)}
+                      </div>
+                    )}
                     {slot ? (
-                      <SlotCell slot={slot}
+                      <SlotCell
+                        slot={slot}
+                        isDragging={draggedSlot?.id === slot.id}
                         onRemove={() => removeMut.mutate(slot.id)}
-                        onSelectTeacher={() => setSelectedTeacherId(slot.teacherId)} />
+                        onSelectTeacher={() => setSelectedTeacherId(slot.teacherId)}
+                        onDragStart={() => setDraggedSlot(slot)}
+                        onDragEnd={() => {
+                          setDraggedSlot(null);
+                          setDragOverCell(null);
+                          resetDragState();
+                        }}
+                      />
                     ) : (
                       <EmptyCell
-                        canAdd={!!selectedCourseAssignmentId}
-                        onAdd={() => addMut.mutate({ dayOfWeek: day, periodId: period.id })} />
+                        canAdd={!!selectedCourseAssignmentId && !draggedSlot}
+                        onAdd={() => addMut.mutate({ dayOfWeek: day, periodId: period.id })}
+                      />
                     )}
                   </td>
                 );
@@ -116,13 +247,23 @@ export function TimetableGrid() {
   );
 }
 
-function SlotCell({ slot, onRemove, onSelectTeacher }: {
+function SlotCell({ slot, isDragging, onRemove, onSelectTeacher, onDragStart, onDragEnd }: {
   slot: TimetableSlot;
+  isDragging: boolean;
   onRemove: () => void;
   onSelectTeacher: () => void;
+  onDragStart: () => void;
+  onDragEnd: () => void;
 }) {
   return (
-    <div className="h-full p-1.5 flex flex-col justify-between group rounded-xl hover:shadow-card"
+    <div
+      draggable
+      onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; onDragStart(); }}
+      onDragEnd={onDragEnd}
+      className={cn(
+        'h-full p-1.5 flex flex-col justify-between group rounded-xl hover:shadow-card cursor-grab active:cursor-grabbing transition-opacity',
+        isDragging && 'opacity-40'
+      )}
       style={{
         backgroundColor: slot.courseColorCode + '20',
         borderLeft: `3px solid ${slot.courseColorCode}`,
@@ -147,9 +288,12 @@ function SlotCell({ slot, onRemove, onSelectTeacher }: {
 function EmptyCell({ canAdd, onAdd }: { canAdd: boolean; onAdd: () => void }) {
   if (!canAdd) return <div className="h-full" />;
   return (
-    <div className="h-full flex items-center justify-center cursor-pointer hover:bg-surface-container-low rounded-xl"
-      onClick={onAdd}>
-      <Plus className="w-5 h-5 text-outline-variant" />
+    <div
+      className="h-full flex items-center justify-center cursor-pointer hover:bg-primary/5 rounded-xl group"
+      onClick={onAdd}
+      title="點擊排入此節次"
+    >
+      <Plus className="w-5 h-5 text-outline-variant group-hover:text-primary transition-colors" />
     </div>
   );
 }

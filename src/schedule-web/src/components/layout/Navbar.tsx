@@ -1,10 +1,6 @@
-interface Semester {
-  id: number;
-  academicYear: number;
-  term: number;
-  schoolName: string;
-  isCurrent: boolean;
-}
+import { cn } from '@/lib/utils';
+import { useScheduleStore } from '@/store/useScheduleStore';
+import type { Semester } from '@/api/types';
 
 interface NavbarProps {
   semesters: Semester[];
@@ -12,9 +8,31 @@ interface NavbarProps {
   onSemesterChange: (id: number) => void;
 }
 
+const TAB_TITLES: Record<string, string> = {
+  dashboard: '儀表板',
+  semester: '開學日',
+  classes: '班級管理',
+  schoolDays: '上課日',
+  periods: '節次設定',
+  staffTitles: '職稱管理',
+  teachers: '教師管理',
+  courses: '課程管理',
+  assignments: '配課管理',
+  homerooms: '導師設定',
+  rooms: '專科教室',
+  timetable: '排課',
+};
+
 export function Navbar({ semesters, currentSemesterId, onSemesterChange }: NavbarProps) {
+  const { sidebarCollapsed, activeTab } = useScheduleStore();
+  const pageTitle = TAB_TITLES[activeTab] ?? '';
+
   return (
-    <header className="fixed top-0 left-64 right-0 h-16 bg-white/80 backdrop-blur-md border-b border-outline-variant/20 flex items-center justify-end px-6 z-30">
+    <header className={cn(
+      'fixed top-0 right-0 h-16 bg-white/80 backdrop-blur-md border-b border-outline-variant/20 flex items-center justify-between px-6 z-30 transition-all duration-300',
+      sidebarCollapsed ? 'left-16' : 'left-64'
+    )}>
+      <span className="text-sm font-semibold text-on-surface">{pageTitle}</span>
       <div className="flex items-center gap-2">
         <span className="text-xs text-on-surface-variant">目前學期：</span>
         {semesters.length === 0 ? (

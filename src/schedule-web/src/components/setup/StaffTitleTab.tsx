@@ -1,15 +1,17 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getStaffTitles, createStaffTitle, deleteStaffTitle } from '@/api/client';
+import { getStaffTitles, createStaffTitle, deleteStaffTitle, updateStaffTitle } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Trash2, Award } from 'lucide-react';
+import { Plus, Trash2, Award, Pencil, Check, X } from 'lucide-react';
 
 export function StaffTitleTab() {
   const qc = useQueryClient();
   const [name, setName] = useState('');
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editName, setEditName] = useState('');
 
   const { data: titles = [] } = useQuery({ queryKey: ['staffTitles'], queryFn: getStaffTitles });
 
@@ -22,6 +24,16 @@ export function StaffTitleTab() {
     mutationFn: deleteStaffTitle,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['staffTitles'] }),
   });
+
+  const updateMut = useMutation({
+    mutationFn: (id: number) => updateStaffTitle(id, { name: editName }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['staffTitles'] }); setEditingId(null); },
+  });
+
+  const startEdit = (t: { id: number; name: string }) => {
+    setEditingId(t.id);
+    setEditName(t.name);
+  };
 
   return (
     <div className="space-y-6">
@@ -48,7 +60,6 @@ export function StaffTitleTab() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>ID</TableHead>
                 <TableHead>名稱</TableHead>
                 <TableHead>操作</TableHead>
               </TableRow>
@@ -56,12 +67,31 @@ export function StaffTitleTab() {
             <TableBody>
               {titles.map(t => (
                 <TableRow key={t.id}>
-                  <TableCell>{t.id}</TableCell>
-                  <TableCell>{t.name}</TableCell>
                   <TableCell>
-                    <Button variant="destructive" size="sm" onClick={() => deleteMut.mutate(t.id)}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    {editingId === t.id
+                      ? <Input value={editName} onChange={e => setEditName(e.target.value)} className="h-7 w-40" />
+                      : t.name}
+                  </TableCell>
+                  <TableCell className="flex gap-1">
+                    {editingId === t.id ? (
+                      <>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateMut.mutate(t.id)}>
+                          <Check className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingId(null)}>
+                          <X className="w-3.5 h-3.5" />
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEdit(t)}>
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteMut.mutate(t.id)}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

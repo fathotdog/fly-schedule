@@ -12,7 +12,7 @@ import { useScheduleStore } from '@/store/useScheduleStore';
 export function ClassTab() {
   const qc = useQueryClient();
   const { currentSemesterId } = useScheduleStore();
-  const [gradeYear, setGradeYear] = useState(7);
+  const [gradeYear, setGradeYear] = useState(1);
   const [sections, setSections] = useState(5);
 
   const { data: classes = [] } = useQuery({
@@ -49,9 +49,12 @@ export function ClassTab() {
               <Label>年級</Label>
               <select value={gradeYear} onChange={e => setGradeYear(+e.target.value)}
                 className="flex h-9 w-24 rounded-md border border-input bg-transparent px-3 py-1 text-sm">
-                <option value={7}>七年級</option>
-                <option value={8}>八年級</option>
-                <option value={9}>九年級</option>
+                <option value={1}>一年級</option>
+                <option value={2}>二年級</option>
+                <option value={3}>三年級</option>
+                <option value={4}>四年級</option>
+                <option value={5}>五年級</option>
+                <option value={6}>六年級</option>
               </select>
             </div>
             <div>

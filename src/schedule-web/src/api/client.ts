@@ -5,14 +5,31 @@ import type {
   SpecialRoom, TimetableSlot, TimetableGridResponse,
   TeacherScheduleResponse, ConflictInfo, ImportResult,
   BatchCourseAssignmentRequest, BatchCourseAssignmentResponse,
-  BatchTeacherAssignmentRequest
+  BatchTeacherAssignmentRequest, DashboardResponse,
+  CopyCourseAssignmentsRequest, CopyCourseAssignmentsResponse,
+  AssignTeacherRequest, UnassignTeacherRequest
 } from './types';
 
-const api = axios.create({ baseURL: '/api' });
+const api = axios.create({
+  baseURL: '/api',
+  paramsSerializer: { indexes: null },
+});
+
+async function downloadBlob(url: string, filename: string, params?: Record<string, unknown>) {
+  const response = await api.get(url, { params, responseType: 'blob' });
+  const objectUrl = window.URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(objectUrl);
+}
 
 // Semesters
 export const getSemesters = () => api.get<Semester[]>('/semesters').then(r => r.data);
-export const createSemester = (data: { academicYear: number; term: number; startDate: string; schoolName?: string }) =>
+export const createSemester = (data: { academicYear: number; term: number; startDate: string; schoolName?: string; sourceSemesterId?: number }) =>
   api.post<Semester>('/semesters', data).then(r => r.data);
 export const updateSemester = (id: number, data: { academicYear: number; term: number; startDate: string; schoolName?: string }) =>
   api.put<Semester>(`/semesters/${id}`, data).then(r => r.data);
@@ -52,17 +69,7 @@ export const updateTeacher = (id: number, data: { name: string; staffTitleId: nu
   api.put<Teacher>(`/teachers/${id}`, data).then(r => r.data);
 export const deleteTeacher = (id: number) => api.delete(`/teachers/${id}`);
 
-export const exportTeachersExcel = async () => {
-  const response = await api.get('/teachers/export-excel', { responseType: 'blob' });
-  const url = window.URL.createObjectURL(new Blob([response.data]));
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', '教師.xlsx');
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.URL.revokeObjectURL(url);
-};
+export const exportTeachersExcel = () => downloadBlob('/teachers/export-excel', '教師.xlsx');
 
 export const importTeachersExcel = async (file: File) => {
   const formData = new FormData();
@@ -78,17 +85,7 @@ export const updateCourse = (id: number, data: { name: string; colorCode: string
   api.put<Course>(`/courses/${id}`, data).then(r => r.data);
 export const deleteCourse = (id: number) => api.delete(`/courses/${id}`);
 
-export const exportCoursesExcel = async () => {
-  const response = await api.get('/courses/export-excel', { responseType: 'blob' });
-  const url = window.URL.createObjectURL(new Blob([response.data]));
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', '課程.xlsx');
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.URL.revokeObjectURL(url);
-};
+export const exportCoursesExcel = () => downloadBlob('/courses/export-excel', '課程.xlsx');
 
 export const importCoursesExcel = async (file: File) => {
   const formData = new FormData();
@@ -103,9 +100,9 @@ export const getCourseAssignments = (semesterId: number, classId?: number, teach
   if (teacherId) params.teacherId = teacherId;
   return api.get<CourseAssignment[]>(`/semesters/${semesterId}/course-assignments`, { params }).then(r => r.data);
 };
-export const createCourseAssignment = (semesterId: number, data: { courseId: number; teacherId: number; classId: number; weeklyPeriods: number }) =>
+export const createCourseAssignment = (semesterId: number, data: { courseId: number; teacherId: number | null; classId: number; weeklyPeriods: number }) =>
   api.post<CourseAssignment>(`/semesters/${semesterId}/course-assignments`, data).then(r => r.data);
-export const updateCourseAssignment = (semesterId: number, id: number, data: { teacherId: number; weeklyPeriods: number }) =>
+export const updateCourseAssignment = (semesterId: number, id: number, data: { teacherId: number | null; weeklyPeriods: number }) =>
   api.put<CourseAssignment>(`/semesters/${semesterId}/course-assignments/${id}`, data).then(r => r.data);
 export const deleteCourseAssignment = (semesterId: number, id: number) =>
   api.delete(`/semesters/${semesterId}/course-assignments/${id}`);
@@ -113,6 +110,12 @@ export const batchCourseAssignments = (semesterId: number, data: BatchCourseAssi
   api.post<BatchCourseAssignmentResponse>(`/semesters/${semesterId}/course-assignments/batch`, data).then(r => r.data);
 export const batchTeacherCourseAssignments = (semesterId: number, data: BatchTeacherAssignmentRequest) =>
   api.post<BatchCourseAssignmentResponse>(`/semesters/${semesterId}/course-assignments/batch-by-teacher`, data).then(r => r.data);
+export const copyCourseAssignments = (semesterId: number, data: CopyCourseAssignmentsRequest) =>
+  api.post<CopyCourseAssignmentsResponse>(`/semesters/${semesterId}/course-assignments/copy`, data).then(r => r.data);
+export const assignTeacher = (semesterId: number, data: AssignTeacherRequest) =>
+  api.post(`/semesters/${semesterId}/course-assignments/assign-teacher`, data).then(r => r.data);
+export const unassignTeacher = (semesterId: number, data: UnassignTeacherRequest) =>
+  api.post(`/semesters/${semesterId}/course-assignments/unassign-teacher`, data).then(r => r.data);
 
 // Periods
 export const getPeriods = (semesterId: number) =>
@@ -150,20 +153,18 @@ export const getTeacherSchedule = (semesterId: number, teacherId: number) =>
 export const createTimetableSlot = (semesterId: number, data: { courseAssignmentId: number; dayOfWeek: number; periodId: number; specialRoomId?: number }) =>
   api.post<TimetableSlot>(`/semesters/${semesterId}/timetable/slots`, data).then(r => r.data);
 export const deleteTimetableSlot = (id: number) => api.delete(`/timetable/slots/${id}`);
-export const checkConflicts = (semesterId: number, params: { courseAssignmentId: number; dayOfWeek: number; periodId: number; specialRoomId?: number }) =>
+export const moveTimetableSlot = (id: number, data: { dayOfWeek: number; periodId: number }) =>
+  api.put<TimetableSlot>(`/timetable/slots/${id}/move`, data).then(r => r.data);
+export const swapTimetableSlots = (data: { slotId1: number; slotId2: number }) =>
+  api.put<TimetableSlot[]>('/timetable/slots/swap', data).then(r => r.data);
+export const checkConflicts = (semesterId: number, params: { courseAssignmentId: number; dayOfWeek: number; periodId: number; specialRoomId?: number; excludeSlotIds?: number[] }) =>
   api.get<{ conflicts: ConflictInfo[]; hasConflicts: boolean }>(`/semesters/${semesterId}/timetable/conflicts/check`, { params }).then(r => r.data);
+export const checkSwapConflicts = (slotId1: number, slotId2: number) =>
+  api.get<{ conflicts: ConflictInfo[]; hasConflicts: boolean }>('/timetable/slots/swap/check', { params: { slotId1, slotId2 } }).then(r => r.data);
 
-export const exportTimetablePdf = async (semesterId: number, classId: number) => {
-  const response = await api.get(`/semesters/${semesterId}/timetable/export-pdf`, {
-    params: { classId },
-    responseType: 'blob',
-  });
-  const url = window.URL.createObjectURL(new Blob([response.data]));
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', '課表.pdf');
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.URL.revokeObjectURL(url);
-};
+// Dashboard
+export const getDashboard = (semesterId: number) =>
+  api.get<DashboardResponse>(`/semesters/${semesterId}/dashboard`).then(r => r.data);
+
+export const exportTimetablePdf = (semesterId: number, classId: number) =>
+  downloadBlob(`/semesters/${semesterId}/timetable/export-pdf`, '課表.pdf', { classId });
