@@ -11,6 +11,9 @@ import { CourseDot } from '@/components/ui/course-dot';
 import { Badge } from '@/components/ui/badge';
 import { BookOpen, RotateCcw } from 'lucide-react';
 import { useScheduleStore } from '@/store/useScheduleStore';
+import { useTableSort } from '@/hooks/useTableSort';
+import { SortableTableHead } from '@/components/ui/sortable-table-head';
+import type { CourseAssignment } from '@/api/types';
 import { ClaimUnassignedDialog } from './ClaimUnassignedDialog';
 import type { ClaimItem } from './ClaimUnassignedDialog';
 import { EMPTY_ARR } from '@/lib/constants';
@@ -38,7 +41,7 @@ export function BatchAssignmentByTeacherPanel() {
   const { data: classes = [] } = useClasses();
 
   const unassignedAssignments = useMemo(
-    () => allAssignments.filter(a => a.teacherId === null),
+    () => allAssignments.filter(a => a.teacherId === null && a.weeklyPeriods > 0),
     [allAssignments]
   );
 
@@ -55,6 +58,15 @@ export function BatchAssignmentByTeacherPanel() {
       weeklyPeriods: a.weeklyPeriods,
     }));
   }, [unassignedAssignments, classes]);
+
+  const { sortState, toggleSort, sortItems } = useTableSort<CourseAssignment>({
+    columns: {
+      course: (a) => a.courseName,
+      class: (a) => a.classDisplayName,
+      weeklyPeriods: (a) => a.weeklyPeriods,
+      scheduled: (a) => a.scheduledPeriods,
+    },
+  });
 
   const selectedTeacher = useMemo(() => teachers.find(t => t.id === selectedTeacherId), [teachers, selectedTeacherId]);
   const totalClaimedPeriods = useMemo(() => claimedAssignments.reduce((sum, a) => sum + a.weeklyPeriods, 0), [claimedAssignments]);
@@ -103,27 +115,42 @@ export function BatchAssignmentByTeacherPanel() {
               />
             </div>
             {selectedTeacherId > 0 && selectedTeacher && (
-              <>
-                <p className="text-sm text-muted-foreground pb-1">
-                  已認領 <span className="font-semibold text-foreground">{totalClaimedPeriods}</span> 節 / 上限 <span className="font-semibold text-foreground">{maxPeriods}</span> 節
-                  {totalClaimedPeriods > maxPeriods && (
-                    <span className="ml-2 text-amber-600 font-medium">⚠ 超出上限</span>
-                  )}
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setClaimDialogOpen(true)}
-                  className="pb-1"
-                >
-                  <BookOpen className="w-4 h-4 mr-1" />
-                  認領待配課程 ({unassignedAssignments.length})
-                </Button>
-              </>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setClaimDialogOpen(true)}
+                className="pb-1"
+              >
+                <BookOpen className="w-4 h-4 mr-1" />
+                認領待配課程 ({unassignedAssignments.length})
+              </Button>
             )}
           </div>
         </CardContent>
       </Card>
+
+      {selectedTeacherId > 0 && selectedTeacher && (() => {
+        const remaining = maxPeriods - totalClaimedPeriods;
+        const overLimit = remaining < 0;
+        return (
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-xl px-4 py-3 bg-primary/8">
+              <p className="text-xs text-muted-foreground mb-1">已認領節數</p>
+              <p className="text-2xl font-bold text-primary">{totalClaimedPeriods}<span className="text-sm font-normal ml-1">節</span></p>
+            </div>
+            <div className="rounded-xl px-4 py-3 bg-surface-container">
+              <p className="text-xs text-muted-foreground mb-1">上限節數</p>
+              <p className="text-2xl font-bold text-on-surface">{maxPeriods}<span className="text-sm font-normal ml-1">節</span></p>
+            </div>
+            <div className={`rounded-xl px-4 py-3 ${overLimit ? 'bg-amber-500/10' : 'bg-green-500/10'}`}>
+              <p className="text-xs text-muted-foreground mb-1">{overLimit ? '超出上限' : '剩餘節數'}</p>
+              <p className={`text-2xl font-bold ${overLimit ? 'text-amber-700' : 'text-green-700'}`}>
+                {Math.abs(remaining)}<span className="text-sm font-normal ml-1">節</span>
+              </p>
+            </div>
+          </div>
+        );
+      })()}
 
       {selectedTeacherId > 0 && (
         <Card>
@@ -142,15 +169,15 @@ export function BatchAssignmentByTeacherPanel() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>課程</TableHead>
-                    <TableHead>班級</TableHead>
-                    <TableHead className="w-20">每週節數</TableHead>
-                    <TableHead className="w-16 text-center">已排</TableHead>
+                    <SortableTableHead columnKey="course" sortState={sortState} onToggleSort={toggleSort}>課程</SortableTableHead>
+                    <SortableTableHead columnKey="class" sortState={sortState} onToggleSort={toggleSort}>班級</SortableTableHead>
+                    <SortableTableHead columnKey="weeklyPeriods" sortState={sortState} onToggleSort={toggleSort} className="w-20">每週節數</SortableTableHead>
+                    <SortableTableHead columnKey="scheduled" sortState={sortState} onToggleSort={toggleSort} className="w-16 text-center">已排</SortableTableHead>
                     <TableHead className="w-16">操作</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {claimedAssignments.map(a => (
+                  {sortItems(claimedAssignments).map(a => (
                     <TableRow key={a.id}>
                       <TableCell>
                         <div className="flex items-center gap-2">

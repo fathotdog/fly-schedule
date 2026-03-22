@@ -40,6 +40,7 @@ export interface Course {
   name: string;
   colorCode: string;
   requiresSpecialRoom: boolean;
+  sortOrder: number;
 }
 
 export interface CourseAssignment {
@@ -172,8 +173,20 @@ export interface CopyCourseAssignmentsRequest {
 
 export interface CopyCourseAssignmentsResponse {
   created: number;
+  updated: number;
   skipped: number;
   assignments: CourseAssignment[];
+}
+
+export interface CopyCourseAssignmentsToGradeRequest {
+  sourceClassId: number;
+}
+
+export interface CopyCourseAssignmentsToGradeResponse {
+  targetClassCount: number;
+  created: number;
+  updated: number;
+  skipped: number;
 }
 
 export interface AssignTeacherRequest {

@@ -8,6 +8,9 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Trash2, School } from 'lucide-react';
 import { useScheduleStore } from '@/store/useScheduleStore';
+import { useTableSort } from '@/hooks/useTableSort';
+import { SortableTableHead } from '@/components/ui/sortable-table-head';
+import type { SchoolClass } from '@/api/types';
 
 export function ClassTab() {
   const qc = useQueryClient();
@@ -19,6 +22,14 @@ export function ClassTab() {
     queryKey: ['classes', currentSemesterId],
     queryFn: () => getClasses(currentSemesterId!),
     enabled: !!currentSemesterId,
+  });
+
+  const { sortState, toggleSort, sortItems } = useTableSort<SchoolClass>({
+    columns: {
+      gradeYear: (c) => c.gradeYear,
+      section: (c) => c.section,
+      displayName: (c) => c.displayName,
+    },
   });
 
   const batchMut = useMutation({
@@ -74,14 +85,14 @@ export function ClassTab() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>年級</TableHead>
-                <TableHead>班級</TableHead>
-                <TableHead>名稱</TableHead>
+                <SortableTableHead columnKey="gradeYear" sortState={sortState} onToggleSort={toggleSort}>年級</SortableTableHead>
+                <SortableTableHead columnKey="section" sortState={sortState} onToggleSort={toggleSort}>班級</SortableTableHead>
+                <SortableTableHead columnKey="displayName" sortState={sortState} onToggleSort={toggleSort}>名稱</SortableTableHead>
                 <TableHead>操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {classes.map(c => (
+              {sortItems(classes).map(c => (
                 <TableRow key={c.id}>
                   <TableCell>{c.gradeYear}</TableCell>
                   <TableCell>{c.section}</TableCell>

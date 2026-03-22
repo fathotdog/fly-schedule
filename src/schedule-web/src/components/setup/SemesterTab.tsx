@@ -10,6 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2, Star, Calendar, Pencil, Check, X } from 'lucide-react';
 import { useScheduleStore } from '@/store/useScheduleStore';
+import { toast } from 'sonner';
+import { getApiErrorMessage } from '@/api/errors';
 
 export function SemesterTab() {
   const qc = useQueryClient();
@@ -27,6 +29,7 @@ export function SemesterTab() {
   const createMut = useMutation({
     mutationFn: () => createSemester({ academicYear: year, term, startDate, schoolName, sourceSemesterId }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['semesters'] }); setStartDate(''); setSourceSemesterId(undefined); },
+    onError: (err: unknown) => { toast.error(getApiErrorMessage(err, '新增學期失敗')); },
   });
 
   const updateMut = useMutation({

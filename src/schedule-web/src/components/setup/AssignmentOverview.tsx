@@ -1,9 +1,12 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useTableSort } from '@/hooks/useTableSort';
+import { SortableTableHead } from '@/components/ui/sortable-table-head';
+import type { CourseAssignment } from '@/api/types';
 import { getCourses } from '@/api/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
 import { SearchSelect } from '@/components/ui/search-select';
 import { CourseDot } from '@/components/ui/course-dot';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +25,17 @@ export function AssignmentOverview() {
   const filteredAssignments = filterClassId > 0
     ? allAssignments.filter(a => a.classId === filterClassId)
     : allAssignments;
+
+  const { sortState, toggleSort, sortItems } = useTableSort<CourseAssignment>({
+    columns: {
+      class: (a) => a.classDisplayName,
+      course: (a) => a.courseName,
+      teacher: (a) => a.teacherName ?? '',
+      weeklyPeriods: (a) => a.weeklyPeriods,
+      scheduled: (a) => a.scheduledPeriods,
+      status: (a) => a.scheduledPeriods >= a.weeklyPeriods ? 2 : a.scheduledPeriods > 0 ? 1 : 0,
+    },
+  });
 
   const classSummary = useMemo(() => classes.map(cls => {
     const classAssignments = allAssignments.filter(a => a.classId === cls.id);
@@ -87,12 +101,12 @@ export function AssignmentOverview() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>班級</TableHead>
-                <TableHead>課程</TableHead>
-                <TableHead>教師</TableHead>
-                <TableHead className="w-24">每週節數</TableHead>
-                <TableHead className="w-16">已排</TableHead>
-                <TableHead className="w-20">狀態</TableHead>
+                <SortableTableHead columnKey="class" sortState={sortState} onToggleSort={toggleSort}>班級</SortableTableHead>
+                <SortableTableHead columnKey="course" sortState={sortState} onToggleSort={toggleSort}>課程</SortableTableHead>
+                <SortableTableHead columnKey="teacher" sortState={sortState} onToggleSort={toggleSort}>教師</SortableTableHead>
+                <SortableTableHead columnKey="weeklyPeriods" sortState={sortState} onToggleSort={toggleSort} className="w-24">每週節數</SortableTableHead>
+                <SortableTableHead columnKey="scheduled" sortState={sortState} onToggleSort={toggleSort} className="w-16">已排</SortableTableHead>
+                <SortableTableHead columnKey="status" sortState={sortState} onToggleSort={toggleSort} className="w-20">狀態</SortableTableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -103,7 +117,7 @@ export function AssignmentOverview() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredAssignments.map(a => (
+                sortItems(filteredAssignments).map(a => (
                   <TableRow key={a.id}>
                     <TableCell>{a.classDisplayName}</TableCell>
                     <TableCell>

@@ -103,7 +103,7 @@ public class ExcelService(ScheduleDbContext db)
 
     public async Task<byte[]> ExportCoursesAsync()
     {
-        var courses = await db.Courses.OrderBy(c => c.Name).ToListAsync();
+        var courses = await db.Courses.OrderBy(c => c.SortOrder).ThenBy(c => c.Id).ToListAsync();
 
         using var workbook = new XLWorkbook();
         var ws = workbook.Worksheets.Add("課程");
@@ -133,6 +133,7 @@ public class ExcelService(ScheduleDbContext db)
         var ws = workbook.Worksheet(1);
 
         var existingCourses = await db.Courses.ToListAsync();
+        var nextSortOrder = existingCourses.Count > 0 ? existingCourses.Max(c => c.SortOrder) + 1 : 0;
 
         int created = 0, updated = 0, skipped = 0;
 
@@ -166,7 +167,8 @@ public class ExcelService(ScheduleDbContext db)
                 {
                     Name = name,
                     ColorCode = colorCode,
-                    RequiresSpecialRoom = requiresRoom
+                    RequiresSpecialRoom = requiresRoom,
+                    SortOrder = nextSortOrder++,
                 };
                 db.Courses.Add(course);
                 existingCourses.Add(course);
@@ -187,6 +189,7 @@ public class ExcelService(ScheduleDbContext db)
             .Where(ca => ca.SemesterId == semesterId)
             .OrderBy(ca => ca.Class.GradeYear)
             .ThenBy(ca => ca.Class.Section)
+            .ThenBy(ca => ca.Course.SortOrder)
             .ThenBy(ca => ca.Course.Name)
             .ToListAsync();
 

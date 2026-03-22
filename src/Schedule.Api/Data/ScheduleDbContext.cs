@@ -105,17 +105,17 @@ public class ScheduleDbContext(DbContextOptions<ScheduleDbContext> options) : Db
 
         // Default courses
         modelBuilder.Entity<Course>().HasData(
-            new Course { Id = 1, Name = "國語", ColorCode = "#ef4444" },
-            new Course { Id = 2, Name = "英語", ColorCode = "#3b82f6" },
-            new Course { Id = 3, Name = "數學", ColorCode = "#22c55e" },
-            new Course { Id = 4, Name = "社會", ColorCode = "#f59e0b" },
-            new Course { Id = 5, Name = "自然", ColorCode = "#8b5cf6" },
-            new Course { Id = 6, Name = "本土語言", ColorCode = "#06b6d4" },
-            new Course { Id = 7, Name = "藝術", ColorCode = "#ec4899" },
-            new Course { Id = 8, Name = "健康與體育", ColorCode = "#14b8a6", RequiresSpecialRoom = true },
-            new Course { Id = 9, Name = "綜合活動", ColorCode = "#f97316" },
-            new Course { Id = 10, Name = "彈性學習", ColorCode = "#64748b" },
-            new Course { Id = 11, Name = "生活", ColorCode = "#84cc16" }
+            new Course { Id = 1, Name = "國語", ColorCode = "#ef4444", SortOrder = 0 },
+            new Course { Id = 2, Name = "英語", ColorCode = "#3b82f6", SortOrder = 1 },
+            new Course { Id = 3, Name = "數學", ColorCode = "#22c55e", SortOrder = 2 },
+            new Course { Id = 4, Name = "社會", ColorCode = "#f59e0b", SortOrder = 3 },
+            new Course { Id = 5, Name = "自然", ColorCode = "#8b5cf6", SortOrder = 4 },
+            new Course { Id = 6, Name = "本土語言", ColorCode = "#06b6d4", SortOrder = 5 },
+            new Course { Id = 7, Name = "藝術", ColorCode = "#ec4899", SortOrder = 6 },
+            new Course { Id = 8, Name = "健康與體育", ColorCode = "#14b8a6", RequiresSpecialRoom = true, SortOrder = 7 },
+            new Course { Id = 9, Name = "綜合活動", ColorCode = "#f97316", SortOrder = 8 },
+            new Course { Id = 10, Name = "彈性學習", ColorCode = "#64748b", SortOrder = 9 },
+            new Course { Id = 11, Name = "生活", ColorCode = "#84cc16", SortOrder = 10 }
         );
     }
 }

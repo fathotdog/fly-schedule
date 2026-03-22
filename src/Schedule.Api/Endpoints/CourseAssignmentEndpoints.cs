@@ -43,6 +43,7 @@ public static class CourseAssignmentEndpoints
 
             return await query.OrderBy(ca => ca.Class.GradeYear)
                 .ThenBy(ca => ca.Class.Section)
+                .ThenBy(ca => ca.Course.SortOrder)
                 .ThenBy(ca => ca.Course.Name)
                 .Select(CourseAssignmentMapper.ToDto)
                 .ToListAsync();
@@ -88,6 +89,9 @@ public static class CourseAssignmentEndpoints
                 .FirstOrDefaultAsync(ca => ca.Id == id && ca.SemesterId == semesterId);
             if (assignment is null) return Results.NotFound();
 
+            if (assignment.TimetableSlots.Count > 0 && req.WeeklyPeriods != assignment.WeeklyPeriods)
+                return Results.BadRequest("課程已排課，無法修改每週節數");
+
             assignment.TeacherId = req.TeacherId;
             assignment.WeeklyPeriods = req.WeeklyPeriods;
             await db.SaveChangesAsync();
@@ -119,6 +123,12 @@ public static class CourseAssignmentEndpoints
         group.MapPost("/copy", async (int semesterId, CopyCourseAssignmentsRequest req, CourseAssignmentService svc) =>
         {
             var (error, result) = await svc.CopyAsync(semesterId, req);
+            return error is not null ? Results.BadRequest(error) : Results.Ok(result);
+        });
+
+        group.MapPost("/copy-to-grade", async (int semesterId, CopyCourseAssignmentsToGradeRequest req, CourseAssignmentService svc) =>
+        {
+            var (error, result) = await svc.CopyToGradeAsync(semesterId, req);
             return error is not null ? Results.BadRequest(error) : Results.Ok(result);
         });
 

@@ -21,7 +21,11 @@ public class CourseAssignmentService(ScheduleDbContext db)
         if (teacherId.HasValue)
             query = query.Where(ca => ca.TeacherId == teacherId.Value);
 
-        return query.OrderBy(ca => ca.Course.Name)
+        return query
+            .OrderBy(ca => ca.Class.GradeYear)
+            .ThenBy(ca => ca.Class.Section)
+            .ThenBy(ca => ca.Course.SortOrder)
+            .ThenBy(ca => ca.Course.Name)
             .Select(CourseAssignmentMapper.ToDto)
             .ToListAsync();
     }
@@ -54,7 +58,10 @@ public class CourseAssignmentService(ScheduleDbContext db)
             {
                 var assignment = existing.FirstOrDefault(ca => ca.Id == existingId);
                 if (assignment is null) continue;
+                if (assignment.TimetableSlots.Count > 0 && item.WeeklyPeriods != assignment.WeeklyPeriods)
+                    return ($"課程「{assignment.Course.Name}」已排課 {assignment.TimetableSlots.Count} 節，無法修改每週節數", null);
                 assignment.WeeklyPeriods = item.WeeklyPeriods;
+                assignment.TeacherId = item.TeacherId;
                 updated++;
             }
             else
@@ -65,7 +72,7 @@ public class CourseAssignmentService(ScheduleDbContext db)
                     SemesterId = semesterId,
                     ClassId = req.ClassId,
                     CourseId = item.CourseId,
-                    TeacherId = null,
+                    TeacherId = item.TeacherId,
                     WeeklyPeriods = item.WeeklyPeriods
                 });
                 created++;
@@ -95,32 +102,89 @@ public class CourseAssignmentService(ScheduleDbContext db)
             .ToListAsync();
 
         var targetAssignments = await db.CourseAssignments
+            .Include(ca => ca.TimetableSlots)
             .Where(ca => ca.SemesterId == semesterId && ca.ClassId == req.TargetClassId)
             .ToListAsync();
 
-        int created = 0, skipped = 0;
-        var copiedCourseIds = new HashSet<int>();
-
-        foreach (var src in sourceAssignments)
-        {
-            if (copiedCourseIds.Contains(src.CourseId)) { skipped++; continue; }
-            if (targetAssignments.Any(ca => ca.CourseId == src.CourseId && ca.TeacherId == null)) { skipped++; continue; }
-
-            db.CourseAssignments.Add(new CourseAssignment
-            {
-                SemesterId = semesterId,
-                ClassId = req.TargetClassId,
-                CourseId = src.CourseId,
-                TeacherId = null,
-                WeeklyPeriods = src.WeeklyPeriods
-            });
-            copiedCourseIds.Add(src.CourseId);
-            created++;
-        }
+        var (created, updated, skipped) = ApplyCopy(semesterId, req.TargetClassId, sourceAssignments, targetAssignments);
 
         await db.SaveChangesAsync();
         var assignments = await GetAssignmentsAsync(semesterId, classId: req.TargetClassId);
-        return (null, new CopyCourseAssignmentsResponse(created, skipped, assignments));
+        return (null, new CopyCourseAssignmentsResponse(created, updated, skipped, assignments));
+    }
+
+    public async Task<(string? Error, CopyCourseAssignmentsToGradeResponse? Result)> CopyToGradeAsync(int semesterId, CopyCourseAssignmentsToGradeRequest req)
+    {
+        var sourceClass = await db.SchoolClasses
+            .Where(c => c.SemesterId == semesterId && c.Id == req.SourceClassId)
+            .Select(c => new { c.Id, c.GradeYear })
+            .FirstOrDefaultAsync();
+
+        if (sourceClass is null) return ("來源班級不屬於此學期", null);
+
+        var targetClassIds = await db.SchoolClasses
+            .Where(c => c.SemesterId == semesterId && c.GradeYear == sourceClass.GradeYear && c.Id != req.SourceClassId)
+            .Select(c => c.Id)
+            .ToListAsync();
+
+        if (targetClassIds.Count == 0) return (null, new CopyCourseAssignmentsToGradeResponse(0, 0, 0, 0));
+
+        var sourceAssignments = await db.CourseAssignments
+            .Where(ca => ca.SemesterId == semesterId && ca.ClassId == req.SourceClassId)
+            .ToListAsync();
+
+        var targetAssignments = await db.CourseAssignments
+            .Include(ca => ca.TimetableSlots)
+            .Where(ca => ca.SemesterId == semesterId && targetClassIds.Contains(ca.ClassId))
+            .ToListAsync();
+
+        int totalCreated = 0, totalUpdated = 0, totalSkipped = 0;
+
+        foreach (var targetClassId in targetClassIds)
+        {
+            var classTargetAssignments = targetAssignments.Where(ca => ca.ClassId == targetClassId).ToList();
+            var (created, updated, skipped) = ApplyCopy(semesterId, targetClassId, sourceAssignments, classTargetAssignments);
+            totalCreated += created;
+            totalUpdated += updated;
+            totalSkipped += skipped;
+        }
+
+        await db.SaveChangesAsync();
+        return (null, new CopyCourseAssignmentsToGradeResponse(targetClassIds.Count, totalCreated, totalUpdated, totalSkipped));
+    }
+
+    private (int Created, int Updated, int Skipped) ApplyCopy(int semesterId, int targetClassId, List<CourseAssignment> sourceAssignments, List<CourseAssignment> targetAssignments)
+    {
+        int created = 0, updated = 0, skipped = 0;
+        var processedCourseIds = new HashSet<int>();
+
+        foreach (var src in sourceAssignments)
+        {
+            if (processedCourseIds.Contains(src.CourseId)) { skipped++; continue; }
+            processedCourseIds.Add(src.CourseId);
+
+            var existing = targetAssignments.FirstOrDefault(ca => ca.CourseId == src.CourseId);
+            if (existing is not null)
+            {
+                if (existing.TeacherId is not null || existing.TimetableSlots.Count > 0) { skipped++; continue; }
+                existing.WeeklyPeriods = src.WeeklyPeriods;
+                updated++;
+            }
+            else
+            {
+                db.CourseAssignments.Add(new CourseAssignment
+                {
+                    SemesterId = semesterId,
+                    ClassId = targetClassId,
+                    CourseId = src.CourseId,
+                    TeacherId = null,
+                    WeeklyPeriods = src.WeeklyPeriods
+                });
+                created++;
+            }
+        }
+
+        return (created, updated, skipped);
     }
 
     public async Task<string?> AssignTeacherAsync(int semesterId, AssignTeacherRequest req)

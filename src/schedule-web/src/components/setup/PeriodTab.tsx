@@ -10,6 +10,8 @@ import { TimeInput24h } from '@/components/ui/time-input';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { Clock, Plus, Trash2, Pencil, Check, X } from 'lucide-react';
 import type { Period } from '@/api/types';
+import { useTableSort } from '@/hooks/useTableSort';
+import { SortableTableHead } from '@/components/ui/sortable-table-head';
 
 export function PeriodTab() {
   const qc = useQueryClient();
@@ -48,6 +50,13 @@ function ClassPeriodsCard({ semesterId, periods, queryClient }: {
   periods: Period[];
   queryClient: ReturnType<typeof import('@tanstack/react-query').useQueryClient>;
 }) {
+  const { sortState, toggleSort, sortItems } = useTableSort<Period>({
+    columns: {
+      periodNumber: (p) => p.periodNumber,
+      startTime: (p) => p.startTime,
+      endTime: (p) => p.endTime,
+    },
+  });
   const [adding, setAdding] = useState(false);
   const [newNumber, setNewNumber] = useState('');
   const [newStart, setNewStart] = useState('');
@@ -135,14 +144,14 @@ function ClassPeriodsCard({ semesterId, periods, queryClient }: {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>節次</TableHead>
-              <TableHead>開始時間</TableHead>
-              <TableHead>結束時間</TableHead>
+              <SortableTableHead columnKey="periodNumber" sortState={sortState} onToggleSort={toggleSort}>節次</SortableTableHead>
+              <SortableTableHead columnKey="startTime" sortState={sortState} onToggleSort={toggleSort}>開始時間</SortableTableHead>
+              <SortableTableHead columnKey="endTime" sortState={sortState} onToggleSort={toggleSort}>結束時間</SortableTableHead>
               <TableHead>操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {periods.map(p => (
+            {sortItems(periods).map(p => (
               <TableRow key={p.id}>
                 {editingId === p.id ? (
                   <>
@@ -193,6 +202,13 @@ function ActivityPeriodsCard({ semesterId, periods, queryClient }: {
   periods: Period[];
   queryClient: ReturnType<typeof import('@tanstack/react-query').useQueryClient>;
 }) {
+  const { sortState: actSortState, toggleSort: actToggleSort, sortItems: actSortItems } = useTableSort<Period>({
+    columns: {
+      activityName: (p) => p.activityName ?? '',
+      startTime: (p) => p.startTime,
+      endTime: (p) => p.endTime,
+    },
+  });
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState('');
   const [newStart, setNewStart] = useState('');
@@ -282,14 +298,14 @@ function ActivityPeriodsCard({ semesterId, periods, queryClient }: {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>活動名稱</TableHead>
-              <TableHead>開始時間</TableHead>
-              <TableHead>結束時間</TableHead>
+              <SortableTableHead columnKey="activityName" sortState={actSortState} onToggleSort={actToggleSort}>活動名稱</SortableTableHead>
+              <SortableTableHead columnKey="startTime" sortState={actSortState} onToggleSort={actToggleSort}>開始時間</SortableTableHead>
+              <SortableTableHead columnKey="endTime" sortState={actSortState} onToggleSort={actToggleSort}>結束時間</SortableTableHead>
               <TableHead>操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {periods.map(p => (
+            {actSortItems(periods).map(p => (
               <TableRow key={p.id}>
                 {editingId === p.id ? (
                   <>

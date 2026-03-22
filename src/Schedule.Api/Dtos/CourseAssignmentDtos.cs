@@ -20,7 +20,9 @@ public record BatchTeacherAssignmentItem(int? Id, int CourseId, int ClassId, int
 public record BatchTeacherAssignmentRequest(int TeacherId, List<BatchTeacherAssignmentItem> Upserts, List<int> DeleteIds);
 
 public record CopyCourseAssignmentsRequest(int SourceClassId, int TargetClassId);
-public record CopyCourseAssignmentsResponse(int Created, int Skipped, List<CourseAssignmentDto> Assignments);
+public record CopyCourseAssignmentsResponse(int Created, int Updated, int Skipped, List<CourseAssignmentDto> Assignments);
+public record CopyCourseAssignmentsToGradeRequest(int SourceClassId);
+public record CopyCourseAssignmentsToGradeResponse(int TargetClassCount, int Created, int Updated, int Skipped);
 
 public record AssignTeacherRequest(List<int> AssignmentIds, int TeacherId);
 public record UnassignTeacherRequest(List<int> AssignmentIds);

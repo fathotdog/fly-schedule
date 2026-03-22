@@ -7,6 +7,7 @@ import type {
   BatchCourseAssignmentRequest, BatchCourseAssignmentResponse,
   BatchTeacherAssignmentRequest, DashboardResponse,
   CopyCourseAssignmentsRequest, CopyCourseAssignmentsResponse,
+  CopyCourseAssignmentsToGradeRequest, CopyCourseAssignmentsToGradeResponse,
   AssignTeacherRequest, UnassignTeacherRequest
 } from './types';
 
@@ -84,6 +85,10 @@ export const createCourse = (data: { name: string; colorCode: string; requiresSp
 export const updateCourse = (id: number, data: { name: string; colorCode: string; requiresSpecialRoom: boolean }) =>
   api.put<Course>(`/courses/${id}`, data).then(r => r.data);
 export const deleteCourse = (id: number) => api.delete(`/courses/${id}`);
+export const getCourseRelatedCounts = (id: number) =>
+  api.get<{ assignmentCount: number; timetableSlotCount: number }>(`/courses/${id}/related-counts`).then(r => r.data);
+export const reorderCourses = (courseIds: number[]) =>
+  api.put<Course[]>('/courses/reorder', { courseIds }).then(r => r.data);
 
 export const exportCoursesExcel = () => downloadBlob('/courses/export-excel', '課程.xlsx');
 
@@ -112,6 +117,8 @@ export const batchTeacherCourseAssignments = (semesterId: number, data: BatchTea
   api.post<BatchCourseAssignmentResponse>(`/semesters/${semesterId}/course-assignments/batch-by-teacher`, data).then(r => r.data);
 export const copyCourseAssignments = (semesterId: number, data: CopyCourseAssignmentsRequest) =>
   api.post<CopyCourseAssignmentsResponse>(`/semesters/${semesterId}/course-assignments/copy`, data).then(r => r.data);
+export const copyCourseAssignmentsToGrade = (semesterId: number, data: CopyCourseAssignmentsToGradeRequest) =>
+  api.post<CopyCourseAssignmentsToGradeResponse>(`/semesters/${semesterId}/course-assignments/copy-to-grade`, data).then(r => r.data);
 export const assignTeacher = (semesterId: number, data: AssignTeacherRequest) =>
   api.post(`/semesters/${semesterId}/course-assignments/assign-teacher`, data).then(r => r.data);
 export const unassignTeacher = (semesterId: number, data: UnassignTeacherRequest) =>
@@ -153,6 +160,8 @@ export const getTeacherSchedule = (semesterId: number, teacherId: number) =>
 export const createTimetableSlot = (semesterId: number, data: { courseAssignmentId: number; dayOfWeek: number; periodId: number; specialRoomId?: number }) =>
   api.post<TimetableSlot>(`/semesters/${semesterId}/timetable/slots`, data).then(r => r.data);
 export const deleteTimetableSlot = (id: number) => api.delete(`/timetable/slots/${id}`);
+export const clearAssignmentSlots = (assignmentId: number) =>
+  api.delete<{ deleted: number }>(`/course-assignments/${assignmentId}/slots`).then(r => r.data);
 export const moveTimetableSlot = (id: number, data: { dayOfWeek: number; periodId: number }) =>
   api.put<TimetableSlot>(`/timetable/slots/${id}/move`, data).then(r => r.data);
 export const swapTimetableSlots = (data: { slotId1: number; slotId2: number }) =>

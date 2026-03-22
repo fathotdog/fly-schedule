@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Schedule.Api.Data;
 
@@ -10,9 +11,11 @@ using Schedule.Api.Data;
 namespace Schedule.Api.Migrations
 {
     [DbContext(typeof(ScheduleDbContext))]
-    partial class ScheduleDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260322020602_AddCourseSortOrder")]
+    partial class AddCourseSortOrder
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.5");
@@ -34,9 +37,6 @@ namespace Schedule.Api.Migrations
                     b.Property<bool>("RequiresSpecialRoom")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("INTEGER");
-
                     b.HasKey("Id");
 
                     b.ToTable("Courses");
@@ -47,88 +47,77 @@ namespace Schedule.Api.Migrations
                             Id = 1,
                             ColorCode = "#ef4444",
                             Name = "國語",
-                            RequiresSpecialRoom = false,
-                            SortOrder = 0
+                            RequiresSpecialRoom = false
                         },
                         new
                         {
                             Id = 2,
                             ColorCode = "#3b82f6",
                             Name = "英語",
-                            RequiresSpecialRoom = false,
-                            SortOrder = 1
+                            RequiresSpecialRoom = false
                         },
                         new
                         {
                             Id = 3,
                             ColorCode = "#22c55e",
                             Name = "數學",
-                            RequiresSpecialRoom = false,
-                            SortOrder = 2
+                            RequiresSpecialRoom = false
                         },
                         new
                         {
                             Id = 4,
                             ColorCode = "#f59e0b",
                             Name = "社會",
-                            RequiresSpecialRoom = false,
-                            SortOrder = 3
+                            RequiresSpecialRoom = false
                         },
                         new
                         {
                             Id = 5,
                             ColorCode = "#8b5cf6",
                             Name = "自然",
-                            RequiresSpecialRoom = false,
-                            SortOrder = 4
+                            RequiresSpecialRoom = false
                         },
                         new
                         {
                             Id = 6,
                             ColorCode = "#06b6d4",
                             Name = "本土語言",
-                            RequiresSpecialRoom = false,
-                            SortOrder = 5
+                            RequiresSpecialRoom = false
                         },
                         new
                         {
                             Id = 7,
                             ColorCode = "#ec4899",
                             Name = "藝術",
-                            RequiresSpecialRoom = false,
-                            SortOrder = 6
+                            RequiresSpecialRoom = false
                         },
                         new
                         {
                             Id = 8,
                             ColorCode = "#14b8a6",
                             Name = "健康與體育",
-                            RequiresSpecialRoom = true,
-                            SortOrder = 7
+                            RequiresSpecialRoom = true
                         },
                         new
                         {
                             Id = 9,
                             ColorCode = "#f97316",
                             Name = "綜合活動",
-                            RequiresSpecialRoom = false,
-                            SortOrder = 8
+                            RequiresSpecialRoom = false
                         },
                         new
                         {
                             Id = 10,
                             ColorCode = "#64748b",
                             Name = "彈性學習",
-                            RequiresSpecialRoom = false,
-                            SortOrder = 9
+                            RequiresSpecialRoom = false
                         },
                         new
                         {
                             Id = 11,
                             ColorCode = "#84cc16",
                             Name = "生活",
-                            RequiresSpecialRoom = false,
-                            SortOrder = 10
+                            RequiresSpecialRoom = false
                         });
                 });
 

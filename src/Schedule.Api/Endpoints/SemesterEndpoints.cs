@@ -24,6 +24,13 @@ public static class SemesterEndpoints
 
         group.MapPost("/", async (CreateSemesterRequest req, ScheduleDbContext db) =>
         {
+            if (req.Term is not (1 or 2))
+                return Results.BadRequest("Term 必須為 1 或 2");
+
+            var exists = await db.Semesters.AnyAsync(s => s.AcademicYear == req.AcademicYear && s.Term == req.Term);
+            if (exists)
+                return Results.Conflict($"{req.AcademicYear} 年第 {req.Term} 學期已存在");
+
             await using var tx = await db.Database.BeginTransactionAsync();
 
             var semester = new Semester

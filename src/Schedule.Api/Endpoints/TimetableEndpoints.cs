@@ -67,5 +67,12 @@ public static class TimetableEndpoints
             if (conflicts.Count > 0) return Results.Conflict(new { conflicts });
             return Results.Ok(slots);
         }).WithTags("Timetable");
+
+        // Clear all slots for a course assignment
+        app.MapDelete("/api/course-assignments/{id:int}/slots", async (int id, TimetableService svc) =>
+        {
+            var count = await svc.ClearAssignmentSlotsAsync(id);
+            return Results.Ok(new { deleted = count });
+        }).WithTags("Timetable");
     }
 }

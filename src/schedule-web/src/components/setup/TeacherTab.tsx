@@ -4,13 +4,16 @@ import { getTeachers, getStaffTitles, createTeacher, deleteTeacher, updateTeache
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardAction } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
-import { Plus, Trash2, Users, Download, Upload, Pencil, Check, X } from 'lucide-react';
+import { Plus, Trash2, Users, Download, Upload, Pencil, Check, X, CheckCircle2, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { useScheduleStore } from '@/store/useScheduleStore';
+import { useTableSort } from '@/hooks/useTableSort';
+import { SortableTableHead } from '@/components/ui/sortable-table-head';
+import type { Teacher } from '@/api/types';
 
 export function TeacherTab() {
   const qc = useQueryClient();
@@ -45,6 +48,23 @@ export function TeacherTab() {
       },
       {}
     ), [assignments]);
+
+  const sortColumns = useMemo(() => ({
+    name: (t: Teacher) => t.name,
+    staffTitle: (t: Teacher) => t.staffTitleName ?? '',
+    maxPeriods: (t: Teacher) => t.maxWeeklyPeriods,
+    assigned: (t: Teacher) => assignmentsByTeacher[t.id]?.totalPeriods ?? 0,
+    courses: (t: Teacher) => assignmentsByTeacher[t.id] ? [...assignmentsByTeacher[t.id].courses].join('、') : '',
+    classes: (t: Teacher) => assignmentsByTeacher[t.id] ? [...assignmentsByTeacher[t.id].classes].join('、') : '',
+  }), [assignmentsByTeacher]);
+
+  const { sortState, toggleSort, sortItems } = useTableSort<Teacher>({ columns: sortColumns });
+
+  const teacherStats = useMemo(() => {
+    const totalCapacity = teachers.reduce((sum, t) => sum + t.maxWeeklyPeriods, 0);
+    const totalAssigned = teachers.reduce((sum, t) => sum + (assignmentsByTeacher[t.id]?.totalPeriods ?? 0), 0);
+    return { totalCapacity, totalAssigned, totalUnassigned: totalCapacity - totalAssigned };
+  }, [teachers, assignmentsByTeacher]);
 
   const createMut = useMutation({
     mutationFn: () => createTeacher({ name, staffTitleId, maxWeeklyPeriods: maxPeriods }),
@@ -97,6 +117,29 @@ export function TeacherTab() {
             教師管理
           </CardTitle>
           <CardDescription>新增及管理教師資料</CardDescription>
+          <CardAction>
+            <div className="flex gap-2 pt-0.5">
+              <div className="flex items-center gap-1.5 bg-primary/8 text-primary rounded-xl px-3 py-2">
+                <Users className="w-3.5 h-3.5 shrink-0" />
+                <span className="text-sm font-bold font-manrope">{teachers.length}</span>
+                <span className="text-[11px] opacity-70">位</span>
+              </div>
+              <div className="flex items-center gap-1.5 bg-tertiary/8 text-tertiary rounded-xl px-3 py-2">
+                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                <span className="text-sm font-bold font-manrope">
+                  {currentSemesterId !== null ? teacherStats.totalAssigned : '—'}
+                </span>
+                <span className="text-[11px] opacity-70">節已配</span>
+              </div>
+              <div className="flex items-center gap-1.5 bg-warning/8 text-warning rounded-xl px-3 py-2">
+                <Clock className="w-3.5 h-3.5 shrink-0" />
+                <span className="text-sm font-bold font-manrope">
+                  {currentSemesterId !== null ? teacherStats.totalUnassigned : '—'}
+                </span>
+                <span className="text-[11px] opacity-70">節未配</span>
+              </div>
+            </div>
+          </CardAction>
         </CardHeader>
         <CardContent>
           <div className="flex gap-2 mb-4">
@@ -152,17 +195,17 @@ export function TeacherTab() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>姓名</TableHead>
-                  <TableHead>職稱</TableHead>
-                  <TableHead>每週最高節數</TableHead>
-                  <TableHead>已配節數</TableHead>
-                  <TableHead>課程</TableHead>
-                  <TableHead>班級</TableHead>
+                  <SortableTableHead columnKey="name" sortState={sortState} onToggleSort={toggleSort} className="w-24">姓名</SortableTableHead>
+                  <SortableTableHead columnKey="staffTitle" sortState={sortState} onToggleSort={toggleSort} className="w-20">職稱</SortableTableHead>
+                  <SortableTableHead columnKey="maxPeriods" sortState={sortState} onToggleSort={toggleSort} className="w-20">每週最高節數</SortableTableHead>
+                  <SortableTableHead columnKey="assigned" sortState={sortState} onToggleSort={toggleSort} className="w-16">已配節數</SortableTableHead>
+                  <SortableTableHead columnKey="courses" sortState={sortState} onToggleSort={toggleSort} className="w-56">課程</SortableTableHead>
+                  <SortableTableHead columnKey="classes" sortState={sortState} onToggleSort={toggleSort} className="w-56">班級</SortableTableHead>
                   <TableHead>操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {teachers.map(t => (
+                {sortItems(teachers).map(t => (
                   <TableRow key={t.id}>
                     <TableCell>
                       {editingId === t.id
@@ -200,8 +243,16 @@ export function TeacherTab() {
                       return (
                         <>
                           <TableCell className={overLimit ? 'text-destructive font-medium' : ''}>{total}</TableCell>
-                          <TableCell>{info ? [...info.courses].join('、') : '—'}</TableCell>
-                          <TableCell>{info ? [...info.classes].join('、') : '—'}</TableCell>
+                          <TableCell>
+                            <div className="max-w-[210px] truncate" title={info ? [...info.courses].join('、') : ''}>
+                              {info ? [...info.courses].join('、') : '—'}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="max-w-[210px] truncate" title={info ? [...info.classes].join('、') : ''}>
+                              {info ? [...info.classes].join('、') : '—'}
+                            </div>
+                          </TableCell>
                         </>
                       );
                     })()}

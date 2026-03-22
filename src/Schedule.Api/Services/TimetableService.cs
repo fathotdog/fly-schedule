@@ -105,6 +105,22 @@ public class TimetableService(ScheduleDbContext db, ConflictDetectionService con
         return true;
     }
 
+    public async Task<int> ClearAssignmentSlotsAsync(int courseAssignmentId)
+    {
+        var slots = await db.TimetableSlots
+            .Include(ts => ts.RoomBooking)
+            .Where(ts => ts.CourseAssignmentId == courseAssignmentId)
+            .ToListAsync();
+
+        foreach (var slot in slots)
+            if (slot.RoomBooking is not null)
+                db.RoomBookings.Remove(slot.RoomBooking);
+
+        db.TimetableSlots.RemoveRange(slots);
+        await db.SaveChangesAsync();
+        return slots.Count;
+    }
+
     public async Task<(TimetableSlotDto? Slot, List<ConflictInfo> Conflicts)> MoveSlotAsync(
         int slotId, MoveTimetableSlotRequest request)
     {

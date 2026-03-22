@@ -6,6 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Trash2, Award, Pencil, Check, X } from 'lucide-react';
+import { useTableSort } from '@/hooks/useTableSort';
+import { SortableTableHead } from '@/components/ui/sortable-table-head';
+import type { StaffTitle } from '@/api/types';
 
 export function StaffTitleTab() {
   const qc = useQueryClient();
@@ -14,6 +17,10 @@ export function StaffTitleTab() {
   const [editName, setEditName] = useState('');
 
   const { data: titles = [] } = useQuery({ queryKey: ['staffTitles'], queryFn: getStaffTitles });
+
+  const { sortState, toggleSort, sortItems } = useTableSort<StaffTitle>({
+    columns: { name: (t) => t.name },
+  });
 
   const createMut = useMutation({
     mutationFn: () => createStaffTitle({ name }),
@@ -60,12 +67,12 @@ export function StaffTitleTab() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>名稱</TableHead>
+                <SortableTableHead columnKey="name" sortState={sortState} onToggleSort={toggleSort}>名稱</SortableTableHead>
                 <TableHead>操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {titles.map(t => (
+              {sortItems(titles).map(t => (
                 <TableRow key={t.id}>
                   <TableCell>
                     {editingId === t.id

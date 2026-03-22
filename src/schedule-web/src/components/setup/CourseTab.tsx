@@ -1,14 +1,128 @@
 import { useRef, useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getCourses, createCourse, deleteCourse, updateCourse, exportCoursesExcel, importCoursesExcel } from '@/api/client';
+import { getCourses, createCourse, deleteCourse, updateCourse, exportCoursesExcel, importCoursesExcel, reorderCourses, getCourseRelatedCounts } from '@/api/client';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Trash2, BookOpen, Download, Upload, Pencil, Check, X, Palette } from 'lucide-react';
+import { Plus, Trash2, BookOpen, Download, Upload, Pencil, Check, X, Palette, GripVertical } from 'lucide-react';
 import { COURSE_COLOR_PALETTE, getNextCourseColor, assignRandomColors } from '@/lib/constants';
 import { ColorPicker } from '@/components/ui/color-picker';
+import { useTableSort } from '@/hooks/useTableSort';
+import { SortableTableHead } from '@/components/ui/sortable-table-head';
+import type { Course } from '@/api/types';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+interface SortableRowProps {
+  course: Course;
+  isDragEnabled: boolean;
+  editingId: number | null;
+  editName: string;
+  editColor: string;
+  editRequiresRoom: boolean;
+  onEditNameChange: (v: string) => void;
+  onEditColorChange: (v: string) => void;
+  onEditRequiresRoomChange: (v: boolean) => void;
+  onSave: (id: number) => void;
+  onCancel: () => void;
+  onEdit: (c: Course) => void;
+  onDelete: (id: number) => void;
+}
+
+function SortableCourseRow({
+  course, isDragEnabled, editingId,
+  editName, editColor, editRequiresRoom,
+  onEditNameChange, onEditColorChange, onEditRequiresRoomChange,
+  onSave, onCancel, onEdit, onDelete,
+}: SortableRowProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: course.id,
+    disabled: !isDragEnabled || editingId === course.id,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <TableRow ref={setNodeRef} style={style}>
+      <TableCell className="w-8 px-1">
+        {isDragEnabled && (
+          <button
+            className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1 rounded"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="w-4 h-4" />
+          </button>
+        )}
+      </TableCell>
+      <TableCell className="flex items-center gap-2">
+        {editingId === course.id ? (
+          <Input value={editName} onChange={e => onEditNameChange(e.target.value)} className="h-7 w-28" />
+        ) : (
+          <>
+            <span className="w-4 h-4 rounded" style={{ backgroundColor: course.colorCode }} />
+            {course.name}
+          </>
+        )}
+      </TableCell>
+      {editingId !== null && (
+        <TableCell>
+          {editingId === course.id
+            ? <ColorPicker value={editColor} onChange={onEditColorChange} />
+            : null}
+        </TableCell>
+      )}
+      <TableCell>
+        {editingId === course.id
+          ? <input type="checkbox" checked={editRequiresRoom} onChange={e => onEditRequiresRoomChange(e.target.checked)} />
+          : (course.requiresSpecialRoom ? '是' : '否')}
+      </TableCell>
+      <TableCell className="flex gap-1">
+        {editingId === course.id ? (
+          <>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onSave(course.id)}>
+              <Check className="w-3.5 h-3.5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onCancel}>
+              <X className="w-3.5 h-3.5" />
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(course)}>
+              <Pencil className="w-3.5 h-3.5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => onDelete(course.id)}>
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+          </>
+        )}
+      </TableCell>
+    </TableRow>
+  );
+}
 
 export function CourseTab() {
   const qc = useQueryClient();
@@ -20,8 +134,29 @@ export function CourseTab() {
   const [editName, setEditName] = useState('');
   const [editColor, setEditColor] = useState(COURSE_COLOR_PALETTE[0]);
   const [editRequiresRoom, setEditRequiresRoom] = useState(false);
+  const [orderedCourses, setOrderedCourses] = useState<Course[]>([]);
+  const [courseToDelete, setCourseToDelete] = useState<number | null>(null);
+  const [relatedCounts, setRelatedCounts] = useState<{ assignmentCount: number; timetableSlotCount: number } | null>(null);
 
   const { data: courses = [] } = useQuery({ queryKey: ['courses'], queryFn: getCourses });
+
+  useEffect(() => {
+    setOrderedCourses(courses);
+  }, [courses]);
+
+  const { sortState, toggleSort, sortItems } = useTableSort<Course>({
+    columns: {
+      name: (c) => c.name,
+      requiresRoom: (c) => c.requiresSpecialRoom,
+    },
+  });
+
+  const isDragEnabled = sortState.column === null;
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   useEffect(() => {
     setColor(getNextCourseColor(courses.map(c => c.colorCode)));
@@ -29,20 +164,39 @@ export function CourseTab() {
 
   const createMut = useMutation({
     mutationFn: () => createCourse({ name, colorCode: color, requiresSpecialRoom: requiresRoom }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['courses'] }); setName(''); /* color resets via useEffect on courses change */ },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['courses'] }); setName(''); },
   });
 
   const deleteMut = useMutation({
     mutationFn: deleteCourse,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['courses'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['courses'] });
+      setCourseToDelete(null);
+    },
   });
+
+  const handleDeleteClick = async (id: number) => {
+    try {
+      const counts = await getCourseRelatedCounts(id);
+      setRelatedCounts(counts);
+      setCourseToDelete(id);
+    } catch {
+      setCourseToDelete(id);
+    }
+  };
 
   const updateMut = useMutation({
     mutationFn: (id: number) => updateCourse(id, { name: editName, colorCode: editColor, requiresSpecialRoom: editRequiresRoom }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['courses'] }); setEditingId(null); },
   });
 
-  const startEdit = (c: { id: number; name: string; colorCode: string; requiresSpecialRoom: boolean }) => {
+  const reorderMut = useMutation({
+    mutationFn: (courseIds: number[]) => reorderCourses(courseIds),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['courses'] }),
+    onError: () => qc.invalidateQueries({ queryKey: ['courses'] }),
+  });
+
+  const startEdit = (c: Course) => {
     setEditingId(c.id);
     setEditName(c.name);
     setEditColor(c.colorCode);
@@ -72,6 +226,19 @@ export function CourseTab() {
     }));
     qc.invalidateQueries({ queryKey: ['courses'] });
   };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = orderedCourses.findIndex(c => c.id === active.id);
+    const newIndex = orderedCourses.findIndex(c => c.id === over.id);
+    const reordered = arrayMove(orderedCourses, oldIndex, newIndex);
+    setOrderedCourses(reordered);
+    reorderMut.mutate(reordered.map(c => c.id));
+  };
+
+  const displayedCourses = isDragEnabled ? orderedCourses : sortItems(courses);
 
   return (
     <div className="space-y-6">
@@ -120,67 +287,73 @@ export function CourseTab() {
 
       <Card>
         <CardContent className="pt-2">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>名稱</TableHead>
-                {editingId !== null && <TableHead>顏色</TableHead>}
-                <TableHead>需要專科教室</TableHead>
-                <TableHead>操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {courses.map(c => (
-                <TableRow key={c.id}>
-                  <TableCell className="flex items-center gap-2">
-                    {editingId === c.id ? (
-                      <Input value={editName} onChange={e => setEditName(e.target.value)} className="h-7 w-28" />
-                    ) : (
-                      <>
-                        <span className="w-4 h-4 rounded" style={{ backgroundColor: c.colorCode }} />
-                        {c.name}
-                      </>
-                    )}
-                  </TableCell>
-                  {editingId !== null && (
-                    <TableCell>
-                      {editingId === c.id
-                        ? <ColorPicker value={editColor} onChange={setEditColor} />
-                        : null}
-                    </TableCell>
-                  )}
-                  <TableCell>
-                    {editingId === c.id
-                      ? <input type="checkbox" checked={editRequiresRoom} onChange={e => setEditRequiresRoom(e.target.checked)} />
-                      : (c.requiresSpecialRoom ? '是' : '否')}
-                  </TableCell>
-                  <TableCell className="flex gap-1">
-                    {editingId === c.id ? (
-                      <>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateMut.mutate(c.id)}>
-                          <Check className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingId(null)}>
-                          <X className="w-3.5 h-3.5" />
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEdit(c)}>
-                          <Pencil className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteMut.mutate(c.id)}>
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={displayedCourses.map(c => c.id)} strategy={verticalListSortingStrategy}>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-8 px-1">
+                      {isDragEnabled && <GripVertical className="w-4 h-4 text-muted-foreground opacity-50" />}
+                    </TableHead>
+                    <SortableTableHead columnKey="name" sortState={sortState} onToggleSort={toggleSort}>名稱</SortableTableHead>
+                    {editingId !== null && <TableHead>顏色</TableHead>}
+                    <SortableTableHead columnKey="requiresRoom" sortState={sortState} onToggleSort={toggleSort}>需要專科教室</SortableTableHead>
+                    <TableHead>操作</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {displayedCourses.map(c => (
+                    <SortableCourseRow
+                      key={c.id}
+                      course={c}
+                      isDragEnabled={isDragEnabled}
+                      editingId={editingId}
+                      editName={editName}
+                      editColor={editColor}
+                      editRequiresRoom={editRequiresRoom}
+                      onEditNameChange={setEditName}
+                      onEditColorChange={setEditColor}
+                      onEditRequiresRoomChange={setEditRequiresRoom}
+                      onSave={(id) => updateMut.mutate(id)}
+                      onCancel={() => setEditingId(null)}
+                      onEdit={startEdit}
+                      onDelete={handleDeleteClick}
+                    />
+                  ))}
+                </TableBody>
+              </Table>
+            </SortableContext>
+          </DndContext>
         </CardContent>
       </Card>
+
+      <Dialog open={courseToDelete !== null} onOpenChange={(open) => { if (!open) setCourseToDelete(null); }}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>確認刪除</DialogTitle>
+            <DialogDescription>
+              {(() => {
+                const name = courses.find(c => c.id === courseToDelete)?.name ?? '';
+                if (relatedCounts && relatedCounts.timetableSlotCount > 0)
+                  return `確定要刪除課程「${name}」嗎？將同時刪除 ${relatedCounts.assignmentCount} 筆配課資料及 ${relatedCounts.timetableSlotCount} 筆排課資料，此操作無法復原。`;
+                if (relatedCounts && relatedCounts.assignmentCount > 0)
+                  return `確定要刪除課程「${name}」嗎？將同時刪除 ${relatedCounts.assignmentCount} 筆配課資料，此操作無法復原。`;
+                return `確定要刪除課程「${name}」嗎？此操作無法復原。`;
+              })()}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" />}>取消</DialogClose>
+            <Button
+              variant="destructive"
+              disabled={deleteMut.isPending}
+              onClick={() => courseToDelete !== null && deleteMut.mutate(courseToDelete)}
+            >
+              確認刪除
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
