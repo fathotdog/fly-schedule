@@ -9,8 +9,14 @@ public static class TimetableEndpoints
     {
         var group = app.MapGroup("/api/semesters/{semesterId:int}/timetable").WithTags("Timetable");
 
-        group.MapGet("/", async (int semesterId, int classId, TimetableService svc) =>
-            Results.Ok(await svc.GetClassTimetableAsync(semesterId, classId)));
+        group.MapGet("/", async (int semesterId, int? classId, int? teacherId, TimetableService svc) =>
+        {
+            if (classId.HasValue)
+                return Results.Ok(await svc.GetClassTimetableAsync(semesterId, classId.Value));
+            if (teacherId.HasValue)
+                return Results.Ok(await svc.GetTeacherTimetableAsync(semesterId, teacherId.Value));
+            return Results.BadRequest(new { message = "classId or teacherId is required" });
+        });
 
         group.MapGet("/teacher/{teacherId:int}", async (int semesterId, int teacherId, TimetableService svc) =>
             Results.Ok(await svc.GetTeacherScheduleAsync(semesterId, teacherId)));

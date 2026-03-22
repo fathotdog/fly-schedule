@@ -153,8 +153,10 @@ export const updateSpecialRoom = (id: number, data: { name: string; capacity: nu
 export const deleteSpecialRoom = (id: number) => api.delete(`/special-rooms/${id}`);
 
 // Timetable
-export const getTimetable = (semesterId: number, classId: number) =>
-  api.get<TimetableGridResponse>(`/semesters/${semesterId}/timetable`, { params: { classId } }).then(r => r.data);
+export const getTimetable = (semesterId: number, classId?: number, teacherId?: number) =>
+  api.get<TimetableGridResponse>(`/semesters/${semesterId}/timetable`, {
+    params: { ...(classId && { classId }), ...(teacherId && { teacherId }) }
+  }).then(r => r.data);
 export const getTeacherSchedule = (semesterId: number, teacherId: number) =>
   api.get<TeacherScheduleResponse>(`/semesters/${semesterId}/timetable/teacher/${teacherId}`).then(r => r.data);
 export const createTimetableSlot = (semesterId: number, data: { courseAssignmentId: number; dayOfWeek: number; periodId: number; specialRoomId?: number }) =>

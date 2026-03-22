@@ -15,21 +15,49 @@ public class TimetableService(ScheduleDbContext db, ConflictDetectionService con
             .Include(ts => ts.Period)
             .Include(ts => ts.RoomBooking).ThenInclude(rb => rb!.SpecialRoom);
 
-    public async Task<TimetableGridResponse> GetClassTimetableAsync(int semesterId, int classId)
+    public Task<TimetableGridResponse> GetClassTimetableAsync(int semesterId, int classId) =>
+        GetTimetableAsync(
+            ts => ts.CourseAssignment.SemesterId == semesterId && ts.CourseAssignment.ClassId == classId,
+            ca => ca.SemesterId == semesterId && ca.ClassId == classId && ca.TeacherId != null);
+
+    public Task<TimetableGridResponse> GetTeacherTimetableAsync(int semesterId, int teacherId) =>
+        GetTimetableAsync(
+            ts => ts.CourseAssignment.SemesterId == semesterId && ts.CourseAssignment.TeacherId == teacherId,
+            ca => ca.SemesterId == semesterId && ca.TeacherId == teacherId);
+
+    public async Task<TeacherScheduleResponse> GetTeacherScheduleAsync(int semesterId, int teacherId)
     {
-        var slots = await SlotWithFullIncludes()
-            .Where(ts => ts.CourseAssignment.SemesterId == semesterId
-                         && ts.CourseAssignment.ClassId == classId)
+        var teacher = await db.Teachers.FindAsync(teacherId);
+        if (teacher is null) return new TeacherScheduleResponse(teacherId, "", []);
+
+        var slots = await GetSlotsAsync(
+            ts => ts.CourseAssignment.SemesterId == semesterId && ts.CourseAssignment.TeacherId == teacherId);
+
+        return new TeacherScheduleResponse(teacherId, teacher.Name, slots);
+    }
+
+    private async Task<List<TimetableSlotDto>> GetSlotsAsync(
+        System.Linq.Expressions.Expression<Func<TimetableSlot, bool>> filter)
+    {
+        return await SlotWithFullIncludes()
+            .Where(filter)
             .OrderBy(ts => ts.DayOfWeek).ThenBy(ts => ts.Period.PeriodNumber)
             .Select(ts => MapSlotDto(ts))
             .ToListAsync();
+    }
+
+    private async Task<TimetableGridResponse> GetTimetableAsync(
+        System.Linq.Expressions.Expression<Func<TimetableSlot, bool>> slotFilter,
+        System.Linq.Expressions.Expression<Func<CourseAssignment, bool>> assignmentFilter)
+    {
+        var slots = await GetSlotsAsync(slotFilter);
 
         var assignments = await db.CourseAssignments
             .Include(ca => ca.Course)
             .Include(ca => ca.Teacher)
             .Include(ca => ca.Class)
             .Include(ca => ca.TimetableSlots)
-            .Where(ca => ca.SemesterId == semesterId && ca.ClassId == classId && ca.TeacherId != null)
+            .Where(assignmentFilter)
             .Select(ca => new CourseAssignmentProgressDto(
                 ca.Id, ca.CourseId, ca.Course.Name, ca.Course.ColorCode,
                 ca.TeacherId, ca.Teacher != null ? ca.Teacher.Name : null,
@@ -38,21 +66,6 @@ public class TimetableService(ScheduleDbContext db, ConflictDetectionService con
             .ToListAsync();
 
         return new TimetableGridResponse(slots, assignments);
-    }
-
-    public async Task<TeacherScheduleResponse> GetTeacherScheduleAsync(int semesterId, int teacherId)
-    {
-        var teacher = await db.Teachers.FindAsync(teacherId);
-        if (teacher is null) return new TeacherScheduleResponse(teacherId, "", []);
-
-        var slots = await SlotWithFullIncludes()
-            .Where(ts => ts.CourseAssignment.SemesterId == semesterId
-                         && ts.CourseAssignment.TeacherId == teacherId)
-            .OrderBy(ts => ts.DayOfWeek).ThenBy(ts => ts.Period.PeriodNumber)
-            .Select(ts => MapSlotDto(ts))
-            .ToListAsync();
-
-        return new TeacherScheduleResponse(teacherId, teacher.Name, slots);
     }
 
     public async Task<(TimetableSlotDto? Slot, List<ConflictInfo> Conflicts)> CreateSlotAsync(

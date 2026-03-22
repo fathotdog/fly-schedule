@@ -5,15 +5,27 @@ import { cn } from '@/lib/utils';
 import { Check } from 'lucide-react';
 
 export function SubjectSelector() {
-  const { currentSemesterId, selectedClassId, selectedCourseAssignmentId, setSelectedCourseAssignmentId, setSelectedTeacherId } = useScheduleStore();
+  const {
+    currentSemesterId, selectedClassId, selectedTeacherId,
+    selectedCourseAssignmentId, setSelectedCourseAssignmentId,
+    setSelectedTeacherId, setSelectedClassId,
+    timetableViewMode,
+  } = useScheduleStore();
+
+  const isClassMode = timetableViewMode === 'class';
+  const activeId = isClassMode ? selectedClassId : selectedTeacherId;
 
   const { data } = useQuery({
-    queryKey: ['timetable', currentSemesterId, selectedClassId],
-    queryFn: () => getTimetable(currentSemesterId!, selectedClassId!),
-    enabled: !!currentSemesterId && !!selectedClassId,
+    queryKey: ['timetable', currentSemesterId, isClassMode ? 'class' : 'teacher', activeId],
+    queryFn: () => getTimetable(
+      currentSemesterId!,
+      isClassMode ? activeId! : undefined,
+      isClassMode ? undefined : activeId!,
+    ),
+    enabled: !!currentSemesterId && !!activeId,
   });
 
-  if (!selectedClassId || !data) return null;
+  if (!activeId || !data) return null;
 
   const { courseAssignments } = data;
 
@@ -29,8 +41,12 @@ export function SubjectSelector() {
             disabled={isComplete && !isSelected}
             onClick={() => {
               if (isComplete && !isSelected) return;
+              if (isClassMode) {
+                setSelectedTeacherId(ca.teacherId);
+              } else {
+                setSelectedClassId(ca.classId);
+              }
               setSelectedCourseAssignmentId(isSelected ? null : ca.id);
-              setSelectedTeacherId(ca.teacherId);
             }}
             className={cn(
               'w-full text-left px-3 py-2 rounded-xl text-sm flex items-center justify-between transition-all',
@@ -41,8 +57,17 @@ export function SubjectSelector() {
           >
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded" style={{ backgroundColor: ca.courseColorCode }} />
-              <span>{ca.teacherName}</span>
-              <span className="text-on-surface-variant">{ca.courseName}</span>
+              {isClassMode ? (
+                <>
+                  <span>{ca.teacherName}</span>
+                  <span className="text-on-surface-variant">{ca.courseName}</span>
+                </>
+              ) : (
+                <>
+                  <span>{ca.courseName}</span>
+                  <span className="text-on-surface-variant">{ca.classDisplayName}</span>
+                </>
+              )}
             </div>
             <div className="flex items-center gap-1.5">
               {isComplete && <Check className="w-3.5 h-3.5 text-tertiary" />}
