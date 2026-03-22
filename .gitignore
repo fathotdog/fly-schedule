@@ -6,3 +6,7 @@ tests/Schedule.Api.Tests/bin/Debug/
 tests/Schedule.Api.Tests/obj/
 src/Schedule.Api/Schedule.Api.csproj.user
 src/Schedule.Api/schedule.db
+src/Schedule.Api/bin/Release/
+tests/Schedule.Api.Tests/bin/Release/
+src/Schedule.Api/schedule.db-shm
+src/Schedule.Api/schedule.db-wal
