@@ -25,6 +25,13 @@ public class TimetableService(ScheduleDbContext db, ConflictDetectionService con
             ts => ts.CourseAssignment.SemesterId == semesterId && ts.CourseAssignment.TeacherId == teacherId,
             ca => ca.SemesterId == semesterId && ca.TeacherId == teacherId);
 
+    public async Task<List<TimetableSlotDto>> GetRoomTimetableAsync(int semesterId, int roomId)
+    {
+        return await GetSlotsAsync(
+            ts => ts.CourseAssignment.SemesterId == semesterId
+                  && ts.RoomBooking != null && ts.RoomBooking.SpecialRoomId == roomId);
+    }
+
     public async Task<TeacherScheduleResponse> GetTeacherScheduleAsync(int semesterId, int teacherId)
     {
         var teacher = await db.Teachers.FindAsync(teacherId);
@@ -102,36 +109,40 @@ public class TimetableService(ScheduleDbContext db, ConflictDetectionService con
         return (MapSlotDto(loaded), []);
     }
 
-    public async Task<bool> DeleteSlotAsync(int slotId)
+    public async Task<(bool Found, bool Locked)> DeleteSlotAsync(int slotId)
     {
         var slot = await db.TimetableSlots
             .Include(ts => ts.RoomBooking)
             .FirstOrDefaultAsync(ts => ts.Id == slotId);
 
-        if (slot is null) return false;
+        if (slot is null) return (false, false);
+        if (slot.IsLocked) return (true, true);
 
         if (slot.RoomBooking is not null)
             db.RoomBookings.Remove(slot.RoomBooking);
 
         db.TimetableSlots.Remove(slot);
         await db.SaveChangesAsync();
-        return true;
+        return (true, false);
     }
 
-    public async Task<int> ClearAssignmentSlotsAsync(int courseAssignmentId)
+    public async Task<(int Deleted, int SkippedLocked)> ClearAssignmentSlotsAsync(int courseAssignmentId)
     {
         var slots = await db.TimetableSlots
             .Include(ts => ts.RoomBooking)
             .Where(ts => ts.CourseAssignmentId == courseAssignmentId)
             .ToListAsync();
 
-        foreach (var slot in slots)
+        var toDelete = slots.Where(s => !s.IsLocked).ToList();
+        var skipped = slots.Count - toDelete.Count;
+
+        foreach (var slot in toDelete)
             if (slot.RoomBooking is not null)
                 db.RoomBookings.Remove(slot.RoomBooking);
 
-        db.TimetableSlots.RemoveRange(slots);
+        db.TimetableSlots.RemoveRange(toDelete);
         await db.SaveChangesAsync();
-        return slots.Count;
+        return (toDelete.Count, skipped);
     }
 
     public async Task<(TimetableSlotDto? Slot, List<ConflictInfo> Conflicts)> MoveSlotAsync(
@@ -141,6 +152,9 @@ public class TimetableService(ScheduleDbContext db, ConflictDetectionService con
 
         if (slot is null)
             return (null, [new ConflictInfo("NotFound", "找不到排課資料")]);
+
+        if (slot.IsLocked)
+            return (null, [new ConflictInfo("Locked", "此節次已鎖定，無法移動")]);
 
         var conflicts = await conflictService.CheckConflictsAsync(
             slot.CourseAssignmentId, request.DayOfWeek, request.PeriodId,
@@ -164,6 +178,9 @@ public class TimetableService(ScheduleDbContext db, ConflictDetectionService con
     {
         var (slot1, slot2, notFound) = await LoadSwapSlots(req.SlotId1, req.SlotId2);
         if (notFound is not null) return ([], notFound);
+
+        if (slot1!.IsLocked || slot2!.IsLocked)
+            return ([], [new ConflictInfo("Locked", "已鎖定的節次無法交換")]);
 
         var allConflicts = await CheckSwapConflictsForSlots(slot1!, slot2!);
         if (allConflicts.Count > 0)
@@ -229,11 +246,21 @@ public class TimetableService(ScheduleDbContext db, ConflictDetectionService con
         return t1.Result.Concat(t2.Result).ToList();
     }
 
+    public async Task<TimetableSlotDto?> ToggleLockAsync(int slotId, bool isLocked)
+    {
+        var slot = await SlotWithFullIncludes().FirstOrDefaultAsync(ts => ts.Id == slotId);
+        if (slot is null) return null;
+        slot.IsLocked = isLocked;
+        await db.SaveChangesAsync();
+        return MapSlotDto(slot);
+    }
+
     private static TimetableSlotDto MapSlotDto(TimetableSlot ts) => new(
         ts.Id, ts.CourseAssignmentId,
         ts.DayOfWeek, ts.PeriodId, ts.Period.PeriodNumber,
         ts.CourseAssignment.Course.Name, ts.CourseAssignment.Course.ColorCode,
         ts.CourseAssignment.Teacher != null ? ts.CourseAssignment.Teacher.Name : null, ts.CourseAssignment.TeacherId,
         ts.CourseAssignment.Class.DisplayName, ts.CourseAssignment.ClassId,
-        ts.RoomBooking?.SpecialRoomId, ts.RoomBooking?.SpecialRoom?.Name);
+        ts.RoomBooking?.SpecialRoomId, ts.RoomBooking?.SpecialRoom?.Name,
+        ts.IsLocked);
 }

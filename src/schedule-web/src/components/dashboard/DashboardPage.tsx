@@ -82,10 +82,10 @@ export function DashboardPage() {
                   >
                     <div className="w-9 h-9 rounded-xl bg-primary/8 flex items-center justify-center relative">
                       <Icon className="w-4 h-4 text-primary" />
-                      <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-primary text-white text-[9px] font-bold flex items-center justify-center">{step}</span>
+                      <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center">{step}</span>
                     </div>
                     <div className="text-xs font-semibold text-on-surface">{label}</div>
-                    <div className="text-[10px] text-on-surface-variant/60 text-center">{description}</div>
+                    <div className="text-xs text-on-surface-variant/60 text-center">{description}</div>
                   </button>
                 </div>
               ))}
@@ -103,7 +103,7 @@ export function DashboardPage() {
         <h1 className="text-lg font-bold font-manrope text-on-surface">儀表板</h1>
         <div className="flex items-center gap-3">
           {lastUpdated && (
-            <span className="text-[11px] text-on-surface-variant/60">最後更新: {lastUpdated}</span>
+            <span className="text-xs text-on-surface-variant/60">最後更新: {lastUpdated}</span>
           )}
           <button
             onClick={() => refetch()}
@@ -146,7 +146,7 @@ export function DashboardPage() {
                 style={{ width: `${Math.min(summary.overallCompletionRate, 100)}%` }}
               />
             </div>
-            <div className="flex justify-between text-[10px] text-white/50 mt-1.5">
+            <div className="flex justify-between text-xs text-white/50 mt-1.5">
               <span>已排 {summary.totalScheduledPeriods} 節</span>
               <span>共 {summary.totalAssignedPeriods} 節</span>
             </div>

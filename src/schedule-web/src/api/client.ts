@@ -80,9 +80,9 @@ export const importTeachersExcel = async (file: File) => {
 
 // Courses
 export const getCourses = () => api.get<Course[]>('/courses').then(r => r.data);
-export const createCourse = (data: { name: string; colorCode: string; requiresSpecialRoom: boolean }) =>
+export const createCourse = (data: { name: string; colorCode: string }) =>
   api.post<Course>('/courses', data).then(r => r.data);
-export const updateCourse = (id: number, data: { name: string; colorCode: string; requiresSpecialRoom: boolean }) =>
+export const updateCourse = (id: number, data: { name: string; colorCode: string }) =>
   api.put<Course>(`/courses/${id}`, data).then(r => r.data);
 export const deleteCourse = (id: number) => api.delete(`/courses/${id}`);
 export const getCourseRelatedCounts = (id: number) =>
@@ -163,7 +163,9 @@ export const createTimetableSlot = (semesterId: number, data: { courseAssignment
   api.post<TimetableSlot>(`/semesters/${semesterId}/timetable/slots`, data).then(r => r.data);
 export const deleteTimetableSlot = (id: number) => api.delete(`/timetable/slots/${id}`);
 export const clearAssignmentSlots = (assignmentId: number) =>
-  api.delete<{ deleted: number }>(`/course-assignments/${assignmentId}/slots`).then(r => r.data);
+  api.delete<{ deleted: number; skippedLocked: number }>(`/course-assignments/${assignmentId}/slots`).then(r => r.data);
+export const toggleSlotLock = (id: number, isLocked: boolean) =>
+  api.put<TimetableSlot>(`/timetable/slots/${id}/lock`, { isLocked }).then(r => r.data);
 export const moveTimetableSlot = (id: number, data: { dayOfWeek: number; periodId: number }) =>
   api.put<TimetableSlot>(`/timetable/slots/${id}/move`, data).then(r => r.data);
 export const swapTimetableSlots = (data: { slotId1: number; slotId2: number }) =>
@@ -179,3 +181,12 @@ export const getDashboard = (semesterId: number) =>
 
 export const exportTimetablePdf = (semesterId: number, classId: number) =>
   downloadBlob(`/semesters/${semesterId}/timetable/export-pdf`, '課表.pdf', { classId });
+
+export const exportTeacherTimetablePdf = (semesterId: number, teacherId: number) =>
+  downloadBlob(`/semesters/${semesterId}/timetable/export-pdf`, '教師課表.pdf', { teacherId });
+
+export const getRoomTimetable = (semesterId: number, roomId: number) =>
+  api.get<TimetableSlot[]>(`/semesters/${semesterId}/timetable/room/${roomId}`).then(r => r.data);
+
+export const exportRoomTimetablePdf = (semesterId: number, roomId: number) =>
+  downloadBlob(`/semesters/${semesterId}/timetable/export-pdf/room/${roomId}`, '專科教室課表.pdf');

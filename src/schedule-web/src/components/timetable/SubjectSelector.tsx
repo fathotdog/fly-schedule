@@ -31,7 +31,7 @@ export function SubjectSelector() {
 
   return (
     <div className="space-y-1">
-      <h3 className="font-bold text-[10px] uppercase tracking-widest text-on-surface-variant mb-2">配課列表</h3>
+      <h3 className="font-bold text-xs uppercase tracking-widest text-on-surface-variant mb-2">配課列表</h3>
       {courseAssignments.map(ca => {
         const isSelected = selectedCourseAssignmentId === ca.id;
         const isComplete = ca.scheduledPeriods >= ca.weeklyPeriods;

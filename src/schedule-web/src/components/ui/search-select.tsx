@@ -180,7 +180,7 @@ export function SearchSelect({ value, onValueChange, placeholder, items, classNa
           {Array.from(groupMap.entries()).map(([group, groupItems]) => (
             <div key={group}>
               <div className="flex items-center gap-1.5 px-2 pt-2 pb-0.5">
-                <span className="text-[10px] font-semibold tracking-widest uppercase text-primary/60 whitespace-nowrap">{group}</span>
+                <span className="text-xs font-semibold tracking-widest uppercase text-primary/60 whitespace-nowrap">{group}</span>
                 <div className="flex-1 h-px bg-outline-variant/20" />
               </div>
               {groupItems.map(item => (

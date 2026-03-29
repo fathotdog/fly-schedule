@@ -110,14 +110,12 @@ public class ExcelService(ScheduleDbContext db)
 
         ws.Cell(1, 1).Value = "名稱";
         ws.Cell(1, 2).Value = "色碼";
-        ws.Cell(1, 3).Value = "需要專科教室";
         ws.Row(1).Style.Font.Bold = true;
 
         for (var i = 0; i < courses.Count; i++)
         {
             ws.Cell(i + 2, 1).Value = courses[i].Name;
             ws.Cell(i + 2, 2).Value = courses[i].ColorCode;
-            ws.Cell(i + 2, 3).Value = courses[i].RequiresSpecialRoom ? "是" : "否";
         }
 
         ws.Columns().AdjustToContents();
@@ -141,7 +139,6 @@ public class ExcelService(ScheduleDbContext db)
         {
             var name = row.Cell(1).GetString().Trim();
             var colorCode = row.Cell(2).GetString().Trim();
-            var requiresRoomText = row.Cell(3).GetString().Trim();
 
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -152,13 +149,10 @@ public class ExcelService(ScheduleDbContext db)
             if (string.IsNullOrWhiteSpace(colorCode))
                 colorCode = "#6366f1";
 
-            var requiresRoom = requiresRoomText == "是";
-
             var existing = existingCourses.FirstOrDefault(c => c.Name == name);
             if (existing is not null)
             {
                 existing.ColorCode = colorCode;
-                existing.RequiresSpecialRoom = requiresRoom;
                 updated++;
             }
             else
@@ -167,7 +161,6 @@ public class ExcelService(ScheduleDbContext db)
                 {
                     Name = name,
                     ColorCode = colorCode,
-                    RequiresSpecialRoom = requiresRoom,
                     SortOrder = nextSortOrder++,
                 };
                 db.Courses.Add(course);

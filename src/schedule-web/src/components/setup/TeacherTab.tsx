@@ -122,21 +122,21 @@ export function TeacherTab() {
               <div className="flex items-center gap-1.5 bg-primary/8 text-primary rounded-xl px-3 py-2">
                 <Users className="w-3.5 h-3.5 shrink-0" />
                 <span className="text-sm font-bold font-manrope">{teachers.length}</span>
-                <span className="text-[11px] opacity-70">位</span>
+                <span className="text-xs opacity-70">位</span>
               </div>
               <div className="flex items-center gap-1.5 bg-tertiary/8 text-tertiary rounded-xl px-3 py-2">
                 <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                 <span className="text-sm font-bold font-manrope">
                   {currentSemesterId !== null ? teacherStats.totalAssigned : '—'}
                 </span>
-                <span className="text-[11px] opacity-70">節已配</span>
+                <span className="text-xs opacity-70">節已配</span>
               </div>
               <div className="flex items-center gap-1.5 bg-warning/8 text-warning rounded-xl px-3 py-2">
                 <Clock className="w-3.5 h-3.5 shrink-0" />
                 <span className="text-sm font-bold font-manrope">
                   {currentSemesterId !== null ? teacherStats.totalUnassigned : '—'}
                 </span>
-                <span className="text-[11px] opacity-70">節未配</span>
+                <span className="text-xs opacity-70">節未配</span>
               </div>
             </div>
           </CardAction>

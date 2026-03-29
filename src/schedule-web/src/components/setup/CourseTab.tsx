@@ -37,10 +37,8 @@ interface SortableRowProps {
   editingId: number | null;
   editName: string;
   editColor: string;
-  editRequiresRoom: boolean;
   onEditNameChange: (v: string) => void;
   onEditColorChange: (v: string) => void;
-  onEditRequiresRoomChange: (v: boolean) => void;
   onSave: (id: number) => void;
   onCancel: () => void;
   onEdit: (c: Course) => void;
@@ -49,8 +47,8 @@ interface SortableRowProps {
 
 function SortableCourseRow({
   course, isDragEnabled, editingId,
-  editName, editColor, editRequiresRoom,
-  onEditNameChange, onEditColorChange, onEditRequiresRoomChange,
+  editName, editColor,
+  onEditNameChange, onEditColorChange,
   onSave, onCancel, onEdit, onDelete,
 }: SortableRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -94,11 +92,6 @@ function SortableCourseRow({
             : null}
         </TableCell>
       )}
-      <TableCell>
-        {editingId === course.id
-          ? <input type="checkbox" checked={editRequiresRoom} onChange={e => onEditRequiresRoomChange(e.target.checked)} />
-          : (course.requiresSpecialRoom ? '是' : '否')}
-      </TableCell>
       <TableCell className="flex gap-1">
         {editingId === course.id ? (
           <>
@@ -128,12 +121,10 @@ export function CourseTab() {
   const qc = useQueryClient();
   const [name, setName] = useState('');
   const [color, setColor] = useState(COURSE_COLOR_PALETTE[0]);
-  const [requiresRoom, setRequiresRoom] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState('');
   const [editColor, setEditColor] = useState(COURSE_COLOR_PALETTE[0]);
-  const [editRequiresRoom, setEditRequiresRoom] = useState(false);
   const [orderedCourses, setOrderedCourses] = useState<Course[]>([]);
   const [courseToDelete, setCourseToDelete] = useState<number | null>(null);
   const [relatedCounts, setRelatedCounts] = useState<{ assignmentCount: number; timetableSlotCount: number } | null>(null);
@@ -147,7 +138,6 @@ export function CourseTab() {
   const { sortState, toggleSort, sortItems } = useTableSort<Course>({
     columns: {
       name: (c) => c.name,
-      requiresRoom: (c) => c.requiresSpecialRoom,
     },
   });
 
@@ -163,7 +153,7 @@ export function CourseTab() {
   }, [courses]);
 
   const createMut = useMutation({
-    mutationFn: () => createCourse({ name, colorCode: color, requiresSpecialRoom: requiresRoom }),
+    mutationFn: () => createCourse({ name, colorCode: color }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['courses'] }); setName(''); },
   });
 
@@ -186,7 +176,7 @@ export function CourseTab() {
   };
 
   const updateMut = useMutation({
-    mutationFn: (id: number) => updateCourse(id, { name: editName, colorCode: editColor, requiresSpecialRoom: editRequiresRoom }),
+    mutationFn: (id: number) => updateCourse(id, { name: editName, colorCode: editColor }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['courses'] }); setEditingId(null); },
   });
 
@@ -200,7 +190,6 @@ export function CourseTab() {
     setEditingId(c.id);
     setEditName(c.name);
     setEditColor(c.colorCode);
-    setEditRequiresRoom(c.requiresSpecialRoom);
   };
 
   const importMut = useMutation({
@@ -222,7 +211,7 @@ export function CourseTab() {
     if (assignments.length === 0) return;
     await Promise.all(assignments.map(({ id, newColor }) => {
       const course = courses.find(c => c.id === id)!;
-      return updateCourse(id, { name: course.name, colorCode: newColor, requiresSpecialRoom: course.requiresSpecialRoom });
+      return updateCourse(id, { name: course.name, colorCode: newColor });
     }));
     qc.invalidateQueries({ queryKey: ['courses'] });
   };
@@ -274,10 +263,6 @@ export function CourseTab() {
                 <ColorPicker value={color} onChange={setColor} />
               </div>
             </div>
-            <label className="flex items-center gap-2 pb-1">
-              <input type="checkbox" checked={requiresRoom} onChange={e => setRequiresRoom(e.target.checked)} />
-              需要專科教室
-            </label>
             <Button onClick={() => createMut.mutate()} disabled={!name}>
               <Plus className="w-4 h-4 mr-1" /> 新增
             </Button>
@@ -297,7 +282,6 @@ export function CourseTab() {
                     </TableHead>
                     <SortableTableHead columnKey="name" sortState={sortState} onToggleSort={toggleSort}>名稱</SortableTableHead>
                     {editingId !== null && <TableHead>顏色</TableHead>}
-                    <SortableTableHead columnKey="requiresRoom" sortState={sortState} onToggleSort={toggleSort}>需要專科教室</SortableTableHead>
                     <TableHead>操作</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -310,10 +294,8 @@ export function CourseTab() {
                       editingId={editingId}
                       editName={editName}
                       editColor={editColor}
-                      editRequiresRoom={editRequiresRoom}
                       onEditNameChange={setEditName}
                       onEditColorChange={setEditColor}
-                      onEditRequiresRoomChange={setEditRequiresRoom}
                       onSave={(id) => updateMut.mutate(id)}
                       onCancel={() => setEditingId(null)}
                       onEdit={startEdit}

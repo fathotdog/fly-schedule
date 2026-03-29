@@ -79,7 +79,7 @@ export function AlertPanel({ alerts }: { alerts: DashboardAlert[] }) {
               key={key}
               onClick={() => setSeverityFilter(key)}
               className={cn(
-                'flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium transition-colors',
+                'flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium transition-colors',
                 severityFilter === key
                   ? key === 'error' ? 'bg-error text-white'
                     : key === 'warning' ? 'bg-warning text-white'

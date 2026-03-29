@@ -39,7 +39,6 @@ export interface Course {
   id: number;
   name: string;
   colorCode: string;
-  requiresSpecialRoom: boolean;
   sortOrder: number;
 }
 
@@ -96,6 +95,7 @@ export interface TimetableSlot {
   classId: number;
   specialRoomId: number | null;
   specialRoomName: string | null;
+  isLocked: boolean;
 }
 
 export interface CourseAssignmentProgress {

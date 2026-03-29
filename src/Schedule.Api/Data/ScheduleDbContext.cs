@@ -23,7 +23,7 @@ public class ScheduleDbContext(DbContextOptions<ScheduleDbContext> options) : Db
         // Semester
         modelBuilder.Entity<Semester>(e =>
         {
-            e.HasIndex(s => new { s.AcademicYear, s.Term }).IsUnique();
+            e.HasIndex(s => new { s.AcademicYear, s.Term, s.SchoolName }).IsUnique();
         });
 
         // SchoolClass
@@ -112,7 +112,7 @@ public class ScheduleDbContext(DbContextOptions<ScheduleDbContext> options) : Db
             new Course { Id = 5, Name = "自然", ColorCode = "#8b5cf6", SortOrder = 4 },
             new Course { Id = 6, Name = "本土語言", ColorCode = "#06b6d4", SortOrder = 5 },
             new Course { Id = 7, Name = "藝術", ColorCode = "#ec4899", SortOrder = 6 },
-            new Course { Id = 8, Name = "健康與體育", ColorCode = "#14b8a6", RequiresSpecialRoom = true, SortOrder = 7 },
+            new Course { Id = 8, Name = "健康與體育", ColorCode = "#14b8a6", SortOrder = 7 },
             new Course { Id = 9, Name = "綜合活動", ColorCode = "#f97316", SortOrder = 8 },
             new Course { Id = 10, Name = "彈性學習", ColorCode = "#64748b", SortOrder = 9 },
             new Course { Id = 11, Name = "生活", ColorCode = "#84cc16", SortOrder = 10 }

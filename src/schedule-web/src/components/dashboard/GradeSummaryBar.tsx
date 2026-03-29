@@ -24,7 +24,7 @@ export function GradeSummaryBar({ gradeSummary }: { gradeSummary: GradeSummaryDt
             >
               <div className="flex items-baseline justify-between">
                 <span className="text-sm font-bold font-manrope text-on-surface">{g.gradeYear} 年級</span>
-                <span className="text-[10px] text-on-surface-variant/60">{g.classCount} 班</span>
+                <span className="text-xs text-on-surface-variant/60">{g.classCount} 班</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="flex-1 h-1.5 rounded-full bg-surface-container-highest overflow-hidden">
@@ -34,13 +34,13 @@ export function GradeSummaryBar({ gradeSummary }: { gradeSummary: GradeSummaryDt
                   />
                 </div>
                 <span className={cn(
-                  'text-[11px] font-semibold shrink-0',
+                  'text-xs font-semibold shrink-0',
                   g.avgCompletionRate >= 100 ? 'text-tertiary' : g.avgCompletionRate < 30 ? 'text-error' : 'text-on-surface-variant'
                 )}>
                   {g.avgCompletionRate}%
                 </span>
               </div>
-              <div className="text-[10px] text-on-surface-variant/50">
+              <div className="text-xs text-on-surface-variant/50">
                 已排 {g.scheduledPeriods} / {g.totalPeriods} 節（{schedRate}%）
               </div>
             </div>

@@ -30,7 +30,7 @@ export function StatCard({
       <div className="min-w-0">
         <div className="text-2xl font-bold font-manrope text-on-surface leading-tight">{value}</div>
         <div className="text-xs font-medium text-on-surface-variant mt-0.5">{label}</div>
-        {sub && <div className="text-[11px] text-on-surface-variant/60 mt-0.5">{sub}</div>}
+        {sub && <div className="text-xs text-on-surface-variant/60 mt-0.5">{sub}</div>}
       </div>
     </div>
   );

@@ -7,17 +7,20 @@ import { ClassSchedulePanel } from './ClassSchedulePanel';
 import { Button } from '@/components/ui/button';
 import { Download, GraduationCap, User } from 'lucide-react';
 import { useScheduleStore } from '@/store/useScheduleStore';
-import { exportTimetablePdf } from '@/api/client';
+import { exportTimetablePdf, exportTeacherTimetablePdf } from '@/api/client';
 import { cn } from '@/lib/utils';
 
 export function TimetablePage() {
-  const { currentSemesterId, selectedClassId, timetableViewMode, setTimetableViewMode } = useScheduleStore();
+  const { currentSemesterId, selectedClassId, selectedTeacherId, timetableViewMode, setTimetableViewMode } = useScheduleStore();
 
   const isClassMode = timetableViewMode === 'class';
 
   const handleExportPdf = () => {
-    if (currentSemesterId && selectedClassId) {
+    if (!currentSemesterId) return;
+    if (isClassMode && selectedClassId) {
       exportTimetablePdf(currentSemesterId, selectedClassId);
+    } else if (!isClassMode && selectedTeacherId) {
+      exportTeacherTimetablePdf(currentSemesterId, selectedTeacherId);
     }
   };
 
@@ -57,17 +60,15 @@ export function TimetablePage() {
           <div className="flex-1">
             {isClassMode ? <ClassSelector /> : <TeacherSelector />}
           </div>
-          {isClassMode && (
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleExportPdf}
-              disabled={!currentSemesterId || !selectedClassId}
-              title="匯出 PDF"
-            >
-              <Download className="w-4 h-4" />
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleExportPdf}
+            disabled={isClassMode ? (!currentSemesterId || !selectedClassId) : (!currentSemesterId || !selectedTeacherId)}
+            title="匯出 PDF"
+          >
+            <Download className="w-4 h-4" />
+          </Button>
         </div>
         <SubjectSelector />
       </div>

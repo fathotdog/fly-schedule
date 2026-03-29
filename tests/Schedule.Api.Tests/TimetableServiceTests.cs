@@ -129,9 +129,10 @@ public class TimetableServiceTests
         var (created, _) = await svc.CreateSlotAsync(ca.SemesterId, new CreateTimetableSlotRequest(ca.Id, 1, period.Id, null));
         Assert.NotNull(created);
 
-        var deleted = await svc.DeleteSlotAsync(created.Id);
+        var (found, locked) = await svc.DeleteSlotAsync(created.Id);
 
-        Assert.True(deleted);
+        Assert.True(found);
+        Assert.False(locked);
         Assert.False(await db.TimetableSlots.AnyAsync(ts => ts.Id == created.Id));
     }
 
@@ -142,8 +143,8 @@ public class TimetableServiceTests
         var conflictSvc = new ConflictDetectionService(db);
         var svc = new TimetableService(db, conflictSvc);
 
-        var deleted = await svc.DeleteSlotAsync(9999);
+        var (found, _) = await svc.DeleteSlotAsync(9999);
 
-        Assert.False(deleted);
+        Assert.False(found);
     }
 }

@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getTimetable, getPeriods, createTimetableSlot, deleteTimetableSlot, moveTimetableSlot, swapTimetableSlots, checkConflicts, checkSwapConflicts } from '@/api/client';
+import { getTimetable, getPeriods, createTimetableSlot, deleteTimetableSlot, moveTimetableSlot, swapTimetableSlots, checkConflicts, checkSwapConflicts, toggleSlotLock } from '@/api/client';
 import { useScheduleStore } from '@/store/useScheduleStore';
-import { Plus, Minus, LayoutGrid, GripVertical, User, AlertTriangle } from 'lucide-react';
+import { Plus, Minus, LayoutGrid, GripVertical, User, AlertTriangle, Lock, LockOpen } from 'lucide-react';
 import type { TimetableSlot, ConflictInfo } from '@/api/types';
 import { DAY_NAMES, SCHOOL_DAYS } from '@/lib/constants';
 import { cellKey, handleConflictError, invalidateTimetableQueries, makeSlotMap } from '@/lib/timetable';
@@ -96,6 +96,11 @@ export function TimetableGrid() {
     onError: (err) => handleConflictError(err, '交換排課失敗'),
   });
 
+  const lockMut = useMutation({
+    mutationFn: (params: { slotId: number; isLocked: boolean }) => toggleSlotLock(params.slotId, params.isLocked),
+    onSuccess: () => invalidateTimetableQueries(qc),
+  });
+
   if (!activeId) {
     return (
       <div className="bg-surface-container-low rounded-2xl p-8 flex flex-col items-center gap-6">
@@ -152,9 +157,9 @@ export function TimetableGrid() {
       <table className="w-full border-separate border-spacing-1">
         <thead>
           <tr>
-            <th className="p-2 bg-surface-container-low text-primary rounded-lg w-16 text-[10px] font-bold uppercase tracking-widest">節次</th>
+            <th className="p-2 bg-surface-container-low text-primary rounded-lg w-16 text-xs font-bold uppercase tracking-widest">節次</th>
             {DAY_NAMES.map((name, i) => (
-              <th key={i} className="p-2 bg-surface-container-low text-primary rounded-lg min-w-[140px] text-[10px] font-bold uppercase tracking-widest">{name}</th>
+              <th key={i} className="p-2 bg-surface-container-low text-primary rounded-lg min-w-[140px] text-xs font-bold uppercase tracking-widest">{name}</th>
             ))}
           </tr>
         </thead>
@@ -163,7 +168,7 @@ export function TimetableGrid() {
             <tr key={period.id}>
               <td className="p-2 text-center font-medium bg-surface-container-low rounded-lg">
                 <div className="text-primary text-sm">{period.periodNumber}</div>
-                <div className="text-[10px] text-on-surface-variant">{period.startTime?.substring(0, 5)}</div>
+                <div className="text-xs text-on-surface-variant">{period.startTime?.substring(0, 5)}</div>
               </td>
               {SCHOOL_DAYS.map(day => {
                 const slot = getSlot(day, period.id);
@@ -184,7 +189,7 @@ export function TimetableGrid() {
                       hasCellWarning && !isDropTarget && 'bg-amber-500/[0.04]'
                     )}
                     onDragOver={(e) => {
-                      if (draggedSlot && (!slot || slot.id !== draggedSlot.id)) e.preventDefault();
+                      if (draggedSlot && (!slot || slot.id !== draggedSlot.id) && !slot?.isLocked) e.preventDefault();
                     }}
                     onDragEnter={() => {
                       if (!draggedSlot || (slot && slot.id === draggedSlot.id)) return;
@@ -225,7 +230,7 @@ export function TimetableGrid() {
                       resetDragState();
                       if (draggedSlot && !slot) {
                         moveMut.mutate({ slotId: draggedSlot.id, dayOfWeek: day, periodId: period.id });
-                      } else if (draggedSlot && slot && slot.id !== draggedSlot.id) {
+                      } else if (draggedSlot && slot && slot.id !== draggedSlot.id && !slot.isLocked) {
                         swapMut.mutate({ slotId1: draggedSlot.id, slotId2: slot.id });
                       }
                       setDraggedSlot(null);
@@ -245,6 +250,7 @@ export function TimetableGrid() {
                         isClassMode={isClassMode}
                         isDragging={draggedSlot?.id === slot.id}
                         onRemove={() => removeMut.mutate(slot.id)}
+                        onToggleLock={() => lockMut.mutate({ slotId: slot.id, isLocked: !slot.isLocked })}
                         onSecondaryClick={() => isClassMode ? setSelectedTeacherId(slot.teacherId) : setSelectedClassId(slot.classId)}
                         onDragStart={() => setDraggedSlot(slot)}
                         onDragEnd={() => {
@@ -272,40 +278,65 @@ export function TimetableGrid() {
   );
 }
 
-function SlotCell({ slot, isClassMode, isDragging, onRemove, onSecondaryClick, onDragStart, onDragEnd }: {
+function SlotCell({ slot, isClassMode, isDragging, onRemove, onToggleLock, onSecondaryClick, onDragStart, onDragEnd }: {
   slot: TimetableSlot;
   isClassMode: boolean;
   isDragging: boolean;
   onRemove: () => void;
+  onToggleLock: () => void;
   onSecondaryClick: () => void;
   onDragStart: () => void;
   onDragEnd: () => void;
 }) {
   return (
     <div
-      draggable
-      onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; onDragStart(); }}
+      draggable={!slot.isLocked}
+      onDragStart={(e) => {
+        if (slot.isLocked) { e.preventDefault(); return; }
+        e.dataTransfer.effectAllowed = 'move';
+        onDragStart();
+      }}
       onDragEnd={onDragEnd}
       className={cn(
-        'h-full p-1.5 flex flex-col justify-between group rounded-xl hover:shadow-card cursor-grab active:cursor-grabbing transition-opacity',
+        'h-full p-1.5 flex flex-col justify-between group rounded-xl hover:shadow-card transition-opacity',
+        slot.isLocked ? 'cursor-default' : 'cursor-grab active:cursor-grabbing',
         isDragging && 'opacity-40'
       )}
       style={{
         backgroundColor: slot.courseColorCode + '20',
         borderLeft: `3px solid ${slot.courseColorCode}`,
       }}>
-      <div>
-        <div className="font-medium text-sm" style={{ color: slot.courseColorCode }}>{slot.courseName}</div>
-        <button className="text-xs text-on-surface-variant hover:text-primary hover:underline"
-          onClick={onSecondaryClick}>
-          {isClassMode ? slot.teacherName : slot.classDisplayName}
-        </button>
+      <div className="flex items-start justify-between gap-1">
+        <div className="min-w-0">
+          <div className="font-medium text-sm" style={{ color: slot.courseColorCode }}>{slot.courseName}</div>
+          <button className="text-xs text-on-surface-variant hover:text-primary hover:underline"
+            onClick={onSecondaryClick}>
+            {isClassMode ? slot.teacherName : slot.classDisplayName}
+          </button>
+        </div>
+        {slot.isLocked && (
+          <Lock className="w-3 h-3 shrink-0 mt-0.5" style={{ color: slot.courseColorCode }} />
+        )}
       </div>
-      <div className="flex justify-end opacity-0 group-hover:opacity-100">
-        <button onClick={onRemove}
-          className="p-1 rounded hover:bg-error-container text-error" title="移除">
-          <Minus className="w-3.5 h-3.5" />
+      <div className="flex justify-end gap-0.5 opacity-0 group-hover:opacity-100">
+        <button
+          onClick={onToggleLock}
+          className={cn(
+            'p-1 rounded transition-colors',
+            slot.isLocked
+              ? 'hover:bg-primary/10 text-primary'
+              : 'hover:bg-surface-container text-on-surface-variant'
+          )}
+          title={slot.isLocked ? '解除鎖定' : '鎖定節次'}
+        >
+          {slot.isLocked ? <LockOpen className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
         </button>
+        {!slot.isLocked && (
+          <button onClick={onRemove}
+            className="p-1 rounded hover:bg-error-container text-error" title="移除">
+            <Minus className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
     </div>
   );

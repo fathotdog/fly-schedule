@@ -35,7 +35,7 @@ export function ShortcutsPanel() {
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-xs font-semibold text-on-surface">{label}</div>
-              <div className="text-[10px] text-on-surface-variant/60 mt-0.5 truncate">{description}</div>
+              <div className="text-xs text-on-surface-variant/60 mt-0.5 truncate">{description}</div>
             </div>
             <ChevronRight className="w-3.5 h-3.5 text-on-surface-variant/30 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
           </button>

@@ -44,14 +44,14 @@ export function TeacherLoadTable({ teachers }: { teachers: TeacherLoadDto[] }) {
             <div className="flex gap-1">
               <button
                 onClick={() => setTitleFilter(null)}
-                className={cn('text-[10px] px-2 py-0.5 rounded-full font-medium transition-colors',
+                className={cn('text-xs px-2 py-0.5 rounded-full font-medium transition-colors',
                   titleFilter == null ? 'bg-primary text-white' : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high')}
               >全部</button>
               {titles.map(t => (
                 <button
                   key={t}
                   onClick={() => setTitleFilter(titleFilter === t ? null : t)}
-                  className={cn('text-[10px] px-2 py-0.5 rounded-full font-medium transition-colors',
+                  className={cn('text-xs px-2 py-0.5 rounded-full font-medium transition-colors',
                     titleFilter === t ? 'bg-primary text-white' : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high')}
                 >{t}</button>
               ))}
@@ -62,12 +62,12 @@ export function TeacherLoadTable({ teachers }: { teachers: TeacherLoadDto[] }) {
 
       {/* Column headers */}
       <div className="flex items-center gap-4 px-1">
-        <div className="w-32 shrink-0 text-[10px] text-on-surface-variant/50 font-bold uppercase tracking-wider">教師</div>
-        <div className="w-24 shrink-0 text-[10px] text-on-surface-variant/50 font-bold uppercase tracking-wider text-center">配課/上限</div>
-        <div className="w-20 shrink-0 text-[10px] text-on-surface-variant/50 font-bold uppercase tracking-wider text-center">已排</div>
+        <div className="w-32 shrink-0 text-xs text-on-surface-variant/50 font-bold uppercase tracking-wider">教師</div>
+        <div className="w-24 shrink-0 text-xs text-on-surface-variant/50 font-bold uppercase tracking-wider text-center">配課/上限</div>
+        <div className="w-20 shrink-0 text-xs text-on-surface-variant/50 font-bold uppercase tracking-wider text-center">已排</div>
         <div className="flex-1 flex items-center gap-1">
-          <span className="text-[10px] text-on-surface-variant/50 font-bold uppercase tracking-wider">負荷</span>
-          <button onClick={toggleSort} className="ml-auto flex items-center gap-0.5 text-[10px] text-on-surface-variant/50 hover:text-on-surface-variant transition-colors">
+          <span className="text-xs text-on-surface-variant/50 font-bold uppercase tracking-wider">負荷</span>
+          <button onClick={toggleSort} className="ml-auto flex items-center gap-0.5 text-xs text-on-surface-variant/50 hover:text-on-surface-variant transition-colors">
             負荷率 <SortIcon className="w-3 h-3" />
           </button>
         </div>
@@ -85,13 +85,13 @@ export function TeacherLoadTable({ teachers }: { teachers: TeacherLoadDto[] }) {
               <div className="w-32 shrink-0">
                 <div className="text-sm font-semibold text-on-surface">{t.teacherName}</div>
                 {t.staffTitleName && (
-                  <div className="text-[10px] text-on-surface-variant/60">{t.staffTitleName}</div>
+                  <div className="text-xs text-on-surface-variant/60">{t.staffTitleName}</div>
                 )}
               </div>
-              <div className="w-24 shrink-0 text-[11px] text-on-surface-variant text-center">
+              <div className="w-24 shrink-0 text-xs text-on-surface-variant text-center">
                 {t.assignedPeriods} / {t.maxWeeklyPeriods}
               </div>
-              <div className="w-20 shrink-0 text-[11px] text-on-surface-variant text-center">
+              <div className="w-20 shrink-0 text-xs text-on-surface-variant text-center">
                 {t.scheduledPeriods} 節
               </div>
               <div className="flex-1 flex items-center gap-2">
@@ -106,7 +106,7 @@ export function TeacherLoadTable({ teachers }: { teachers: TeacherLoadDto[] }) {
                   )}
                 </div>
                 <span className={cn(
-                  'text-[11px] font-semibold w-12 text-right shrink-0',
+                  'text-xs font-semibold w-12 text-right shrink-0',
                   overload ? 'text-error' : 'text-on-surface-variant'
                 )}>
                   {t.loadRate}%

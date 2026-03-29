@@ -320,7 +320,7 @@ export function BatchAssignmentPanel() {
                 <TableBody>
                   {(() => {
                     const seenCourseIds = new Set<number>();
-                    return sortItems(rows).map(row => {
+                    return sortItems(rows).map((row, rowIndex) => {
                       const isTeacherAssigned = row.teacherId !== null;
                       const isFirstRow = !seenCourseIds.has(row.courseId);
                       if (!row.markedForDeletion) seenCourseIds.add(row.courseId);
@@ -351,7 +351,17 @@ export function BatchAssignmentPanel() {
                                 max={20}
                                 value={row.weeklyPeriods || ''}
                                 placeholder="0"
+                                data-row-index={rowIndex}
                                 onChange={e => updateRow(row.rowKey, { weeklyPeriods: +e.target.value })}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                                    e.preventDefault();
+                                    document.querySelector<HTMLInputElement>(`input[data-row-index="${rowIndex + 1}"]`)?.focus();
+                                  } else if (e.key === 'ArrowUp') {
+                                    e.preventDefault();
+                                    document.querySelector<HTMLInputElement>(`input[data-row-index="${rowIndex - 1}"]`)?.focus();
+                                  }
+                                }}
                                 className="w-20"
                               />
                             )}

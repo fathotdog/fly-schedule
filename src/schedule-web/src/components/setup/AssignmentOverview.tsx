@@ -1,9 +1,7 @@
 import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableTableHead } from '@/components/ui/sortable-table-head';
 import type { CourseAssignment } from '@/api/types';
-import { getCourses } from '@/api/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
@@ -19,7 +17,6 @@ export function AssignmentOverview() {
   const [filterClassId, setFilterClassId] = useState(0);
 
   const { data: classes = [] } = useClasses();
-  const { data: courses = [] } = useQuery({ queryKey: ['courses'], queryFn: getCourses });
   const { data: allAssignments = [] } = useCourseAssignments();
 
   const filteredAssignments = filterClassId > 0
@@ -39,11 +36,12 @@ export function AssignmentOverview() {
 
   const classSummary = useMemo(() => classes.map(cls => {
     const classAssignments = allAssignments.filter(a => a.classId === cls.id);
-    const assigned = classAssignments.filter(a => a.teacherId !== null).length;
-    const total = courses.length;
     const totalPeriods = classAssignments.reduce((sum, a) => sum + a.weeklyPeriods, 0);
-    return { cls, assigned, total, totalPeriods };
-  }), [allAssignments, classes, courses.length]);
+    const assignedPeriods = classAssignments
+      .filter(a => a.teacherId !== null)
+      .reduce((sum, a) => sum + a.weeklyPeriods, 0);
+    return { cls, assigned: assignedPeriods, total: totalPeriods, totalPeriods };
+  }), [allAssignments, classes]);
 
   const getBadgeStyle = (assigned: number, total: number) => {
     if (total === 0 || assigned === 0) return 'bg-surface-container text-on-surface-variant';
@@ -59,7 +57,7 @@ export function AssignmentOverview() {
         <CardContent className="pt-4">
           <p className="text-sm font-medium text-muted-foreground mb-3">各班配課進度</p>
           <div className="flex flex-wrap gap-2">
-            {classSummary.map(({ cls, assigned, total, totalPeriods }) => (
+            {classSummary.map(({ cls, assigned, total }) => (
               <button
                 key={cls.id}
                 onClick={() => setFilterClassId(filterClassId === cls.id ? 0 : cls.id)}
@@ -67,7 +65,7 @@ export function AssignmentOverview() {
                   filterClassId === cls.id ? 'ring-2 ring-primary ring-offset-1' : ''
                 } ${getBadgeStyle(assigned, total)}`}
               >
-                {cls.displayName} {assigned}/{total} ({totalPeriods}節)
+                {cls.displayName} {assigned}/{total}節
               </button>
             ))}
             {classSummary.length === 0 && (

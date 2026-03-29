@@ -93,14 +93,14 @@ export function ClassProgressTable({ classes }: { classes: ClassProgressDto[] })
           <div className="flex gap-1">
             <button
               onClick={() => setGradeFilter(null)}
-              className={cn('text-[10px] px-2 py-0.5 rounded-full font-medium transition-colors',
+              className={cn('text-xs px-2 py-0.5 rounded-full font-medium transition-colors',
                 gradeFilter == null ? 'bg-primary text-white' : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high')}
             >全年</button>
             {grades.map(g => (
               <button
                 key={g}
                 onClick={() => setGradeFilter(gradeFilter === g ? null : g)}
-                className={cn('text-[10px] px-2 py-0.5 rounded-full font-medium transition-colors',
+                className={cn('text-xs px-2 py-0.5 rounded-full font-medium transition-colors',
                   gradeFilter === g ? 'bg-primary text-white' : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high')}
               >{g}年</button>
             ))}
@@ -109,7 +109,7 @@ export function ClassProgressTable({ classes }: { classes: ClassProgressDto[] })
           <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value as StatusFilter)}
-            className="text-[10px] px-2 py-0.5 rounded-lg bg-surface-container text-on-surface-variant border-none outline-none"
+            className="text-xs px-2 py-0.5 rounded-lg bg-surface-container text-on-surface-variant border-none outline-none"
           >
             {(['all', 'unassigned', 'not_started', 'in_progress', 'complete'] as StatusFilter[]).map(s => (
               <option key={s} value={s}>{statusLabel[s]}</option>
@@ -123,7 +123,7 @@ export function ClassProgressTable({ classes }: { classes: ClassProgressDto[] })
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="搜尋班級或導師"
-              className="text-[10px] pl-5 pr-2 py-0.5 rounded-lg bg-surface-container text-on-surface-variant placeholder-on-surface-variant/40 border-none outline-none w-28"
+              className="text-xs pl-5 pr-2 py-0.5 rounded-lg bg-surface-container text-on-surface-variant placeholder-on-surface-variant/40 border-none outline-none w-28"
             />
           </div>
         </div>
@@ -132,12 +132,12 @@ export function ClassProgressTable({ classes }: { classes: ClassProgressDto[] })
       {/* Column headers */}
       <div className="flex items-center gap-3 px-1 shrink-0">
         <div className="w-4 shrink-0" />
-        <div className="w-16 shrink-0 text-[10px] text-on-surface-variant/50 font-bold uppercase tracking-wider">班級</div>
-        <div className="w-24 shrink-0 text-[10px] text-on-surface-variant/50 font-bold uppercase tracking-wider">導師</div>
-        <div className="w-20 shrink-0 text-[10px] text-on-surface-variant/50 font-bold uppercase tracking-wider text-center">節次</div>
+        <div className="w-16 shrink-0 text-xs text-on-surface-variant/50 font-bold uppercase tracking-wider">班級</div>
+        <div className="w-24 shrink-0 text-xs text-on-surface-variant/50 font-bold uppercase tracking-wider">導師</div>
+        <div className="w-20 shrink-0 text-xs text-on-surface-variant/50 font-bold uppercase tracking-wider text-center">節次</div>
         <div className="flex-1 flex items-center gap-1">
-          <span className="text-[10px] text-on-surface-variant/50 font-bold uppercase tracking-wider">進度</span>
-          <button onClick={toggleSort} className="ml-auto flex items-center gap-0.5 text-[10px] text-on-surface-variant/50 hover:text-on-surface-variant transition-colors">
+          <span className="text-xs text-on-surface-variant/50 font-bold uppercase tracking-wider">進度</span>
+          <button onClick={toggleSort} className="ml-auto flex items-center gap-0.5 text-xs text-on-surface-variant/50 hover:text-on-surface-variant transition-colors">
             完成率 <SortIcon className="w-3 h-3" />
           </button>
         </div>
@@ -146,7 +146,7 @@ export function ClassProgressTable({ classes }: { classes: ClassProgressDto[] })
       <div className="flex-1 overflow-y-auto">
         {Object.keys(byGrade).sort((a, b) => Number(a) - Number(b)).map(grade => (
           <div key={grade} className="mb-4">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 mb-1 px-1">
+            <div className="text-xs font-bold uppercase tracking-widest text-on-surface-variant/50 mb-1 px-1">
               {grade} 年級
             </div>
             <div className="divide-y divide-slate-50">
@@ -162,12 +162,12 @@ export function ClassProgressTable({ classes }: { classes: ClassProgressDto[] })
                     <div className="w-16 shrink-0 text-sm font-semibold text-on-surface font-manrope">{c.classDisplayName}</div>
                     <div className="w-24 shrink-0">
                       {c.hasHomeroomTeacher ? (
-                        <span className="text-[11px] text-on-surface-variant">{c.homeroomTeacherName}</span>
+                        <span className="text-xs text-on-surface-variant">{c.homeroomTeacherName}</span>
                       ) : (
-                        <span className="text-[11px] text-error/70 italic">未設導師</span>
+                        <span className="text-xs text-error/70 italic">未設導師</span>
                       )}
                     </div>
-                    <div className="w-20 shrink-0 text-[11px] text-on-surface-variant text-center">
+                    <div className="w-20 shrink-0 text-xs text-on-surface-variant text-center">
                       {c.scheduledPeriods} / {c.totalWeeklyPeriods} 節
                     </div>
                     <div className="flex-1 flex items-center gap-2">
@@ -175,7 +175,7 @@ export function ClassProgressTable({ classes }: { classes: ClassProgressDto[] })
                         <ProgressBar value={c.completionRate} variant={progressVariant(status)} />
                       </div>
                       <span className={cn(
-                        'text-[11px] font-semibold w-10 text-right shrink-0',
+                        'text-xs font-semibold w-10 text-right shrink-0',
                         status === 'complete' ? 'text-tertiary' : status === 'not_started' ? 'text-error' : status === 'unassigned' ? 'text-on-surface-variant/40' : c.completionRate < 50 ? 'text-warning' : 'text-on-surface-variant'
                       )}>
                         {c.totalWeeklyPeriods === 0 ? '—' : `${c.completionRate}%`}

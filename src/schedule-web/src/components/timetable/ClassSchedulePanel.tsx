@@ -67,9 +67,9 @@ export function ClassSchedulePanel() {
       <table className="w-full table-fixed border-separate border-spacing-0.5 text-xs">
         <thead>
           <tr>
-            <th className="p-1 bg-surface-container-low text-primary rounded text-[9px] font-bold uppercase tracking-widest w-8"></th>
+            <th className="p-1 bg-surface-container-low text-primary rounded text-[11px] font-bold uppercase tracking-widest w-8"></th>
             {DAY_NAMES.map((n, i) => (
-              <th key={i} className="p-1 bg-surface-container-low text-primary rounded text-[9px] font-bold uppercase tracking-widest">{n}</th>
+              <th key={i} className="p-1 bg-surface-container-low text-primary rounded text-[11px] font-bold uppercase tracking-widest">{n}</th>
             ))}
           </tr>
         </thead>

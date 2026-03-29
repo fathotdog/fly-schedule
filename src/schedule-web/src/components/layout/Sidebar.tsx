@@ -68,7 +68,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
         {!sidebarCollapsed && (
           <div className="overflow-hidden whitespace-nowrap">
             <div className="text-sm font-bold text-on-surface leading-tight">排課系統</div>
-            <div className="text-[10px] text-on-surface-variant tracking-wide">Academic Scheduler</div>
+            <div className="text-xs text-on-surface-variant tracking-wide">Academic Scheduler</div>
           </div>
         )}
       </div>
@@ -78,7 +78,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
         {navGroups.map(group => (
           <div key={group.label}>
             {!sidebarCollapsed && (
-              <div className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60 px-2 mb-1.5 overflow-hidden whitespace-nowrap">
+              <div className="text-xs font-bold uppercase tracking-widest text-on-surface-variant/60 px-2 mb-1.5 overflow-hidden whitespace-nowrap">
                 {group.label}
               </div>
             )}

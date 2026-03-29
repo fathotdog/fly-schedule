@@ -155,7 +155,7 @@ public class CourseAssignmentService(ScheduleDbContext db)
 
     private (int Created, int Updated, int Skipped) ApplyCopy(int semesterId, int targetClassId, List<CourseAssignment> sourceAssignments, List<CourseAssignment> targetAssignments)
     {
-        int created = 0, updated = 0, skipped = 0;
+        int created = 0, skipped = 0;
         var processedCourseIds = new HashSet<int>();
 
         foreach (var src in sourceAssignments)
@@ -166,25 +166,22 @@ public class CourseAssignmentService(ScheduleDbContext db)
             var existing = targetAssignments.FirstOrDefault(ca => ca.CourseId == src.CourseId);
             if (existing is not null)
             {
-                if (existing.TeacherId is not null || existing.TimetableSlots.Count > 0) { skipped++; continue; }
-                existing.WeeklyPeriods = src.WeeklyPeriods;
-                updated++;
+                skipped++;
+                continue;
             }
-            else
+
+            db.CourseAssignments.Add(new CourseAssignment
             {
-                db.CourseAssignments.Add(new CourseAssignment
-                {
-                    SemesterId = semesterId,
-                    ClassId = targetClassId,
-                    CourseId = src.CourseId,
-                    TeacherId = null,
-                    WeeklyPeriods = src.WeeklyPeriods
-                });
-                created++;
-            }
+                SemesterId = semesterId,
+                ClassId = targetClassId,
+                CourseId = src.CourseId,
+                TeacherId = null,
+                WeeklyPeriods = src.WeeklyPeriods
+            });
+            created++;
         }
 
-        return (created, updated, skipped);
+        return (created, 0, skipped);
     }
 
     public async Task<string?> AssignTeacherAsync(int semesterId, AssignTeacherRequest req)

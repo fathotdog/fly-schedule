@@ -41,13 +41,13 @@ public static class CourseEndpoints
             await db.SaveChangesAsync();
             return Results.Ok(courses
                 .OrderBy(c => c.SortOrder)
-                .Select(c => new CourseDto(c.Id, c.Name, c.ColorCode, c.RequiresSpecialRoom, c.SortOrder))
+                .Select(c => new CourseDto(c.Id, c.Name, c.ColorCode, c.SortOrder))
                 .ToList());
         });
 
         group.MapGet("/", async (ScheduleDbContext db) =>
             await db.Courses.OrderBy(c => c.SortOrder).ThenBy(c => c.Id)
-                .Select(c => new CourseDto(c.Id, c.Name, c.ColorCode, c.RequiresSpecialRoom, c.SortOrder))
+                .Select(c => new CourseDto(c.Id, c.Name, c.ColorCode, c.SortOrder))
                 .ToListAsync());
 
         group.MapPost("/", async (CreateCourseRequest req, ScheduleDbContext db) =>
@@ -57,13 +57,12 @@ public static class CourseEndpoints
             {
                 Name = req.Name,
                 ColorCode = req.ColorCode,
-                RequiresSpecialRoom = req.RequiresSpecialRoom,
                 SortOrder = maxSort + 1,
             };
             db.Courses.Add(course);
             await db.SaveChangesAsync();
             return Results.Created($"/api/courses/{course.Id}",
-                new CourseDto(course.Id, course.Name, course.ColorCode, course.RequiresSpecialRoom, course.SortOrder));
+                new CourseDto(course.Id, course.Name, course.ColorCode, course.SortOrder));
         });
 
         group.MapPut("/{id:int}", async (int id, UpdateCourseRequest req, ScheduleDbContext db) =>
@@ -72,9 +71,8 @@ public static class CourseEndpoints
             if (course is null) return Results.NotFound();
             course.Name = req.Name;
             course.ColorCode = req.ColorCode;
-            course.RequiresSpecialRoom = req.RequiresSpecialRoom;
             await db.SaveChangesAsync();
-            return Results.Ok(new CourseDto(course.Id, course.Name, course.ColorCode, course.RequiresSpecialRoom, course.SortOrder));
+            return Results.Ok(new CourseDto(course.Id, course.Name, course.ColorCode, course.SortOrder));
         });
 
         group.MapGet("/{id:int}/related-counts", async (int id, ScheduleDbContext db) =>

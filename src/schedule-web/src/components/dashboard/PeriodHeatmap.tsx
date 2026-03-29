@@ -46,21 +46,21 @@ export function PeriodHeatmap({ distribution }: { distribution: PeriodDistributi
       <div className="flex items-center justify-between mb-4">
         <div className="text-sm font-bold font-manrope text-on-surface">節次分布熱力圖</div>
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-on-surface-variant/50">低</span>
+          <span className="text-xs text-on-surface-variant/50">低</span>
           <div className="flex gap-0.5">
             {[0.1, 0.3, 0.5, 0.7, 0.9].map(r => (
               <div key={r} className={cn('w-4 h-4 rounded-sm', heatColor(Math.round(r * totalClasses), totalClasses))} />
             ))}
           </div>
-          <span className="text-[10px] text-on-surface-variant/50">高</span>
+          <span className="text-xs text-on-surface-variant/50">高</span>
         </div>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-center text-[11px]">
+        <table className="w-full text-center text-xs">
           <thead>
             <tr>
-              <th className="w-10 text-on-surface-variant/50 font-medium text-[10px] pb-2">節次</th>
+              <th className="w-10 text-on-surface-variant/50 font-medium text-xs pb-2">節次</th>
               {activeDays.map(day => (
                 <th key={day} className="font-semibold text-on-surface pb-2 px-1">{DAY_NAMES_1BASED[day] ?? `週${day}`}</th>
               ))}
@@ -69,7 +69,7 @@ export function PeriodHeatmap({ distribution }: { distribution: PeriodDistributi
           <tbody>
             {periods.map(period => (
               <tr key={period}>
-                <td className="text-on-surface-variant/50 font-medium py-0.5 text-[10px]">第{period}節</td>
+                <td className="text-on-surface-variant/50 font-medium py-0.5 text-xs">第{period}節</td>
                 {activeDays.map(day => {
                   const cell = lookup.get(`${day}-${period}`);
                   const count = cell?.slotCount ?? 0;
@@ -110,7 +110,7 @@ export function PeriodHeatmap({ distribution }: { distribution: PeriodDistributi
           className="absolute z-50 pointer-events-none"
           style={{ left: tooltip.x, top: tooltip.y - 8, transform: 'translate(-50%, -100%)' }}
         >
-          <div className="bg-on-surface text-surface text-[11px] rounded-lg px-3 py-2 shadow-lg min-w-[120px]">
+          <div className="bg-on-surface text-surface text-xs rounded-lg px-3 py-2 shadow-lg min-w-[120px]">
             <div className="font-semibold mb-1">
               {DAY_NAMES_1BASED[tooltip.cell.dayOfWeek]} 第{tooltip.cell.periodNumber}節
             </div>
