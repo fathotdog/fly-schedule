@@ -7,7 +7,15 @@ namespace Schedule.Api.Services;
 
 public class CourseAssignmentService(ScheduleDbContext db)
 {
-    private Task<List<CourseAssignmentDto>> GetAssignmentsAsync(int semesterId, int? classId = null, int? teacherId = null)
+    private static string? ValidateTeacherWeeklyPeriods(Teacher teacher, int projectedWeeklyPeriods, bool force)
+    {
+        if (force || projectedWeeklyPeriods <= teacher.MaxWeeklyPeriods)
+            return null;
+
+        return $"教師「{teacher.Name}」每週節數上限為 {teacher.MaxWeeklyPeriods} 節，本次操作後將達 {projectedWeeklyPeriods} 節。若要仍然儲存，請使用 force=true。";
+    }
+
+    public Task<List<CourseAssignmentDto>> GetAssignmentsAsync(int semesterId, int? classId = null, int? teacherId = null, bool unassigned = false)
     {
         var query = db.CourseAssignments
             .Include(ca => ca.Course)
@@ -20,6 +28,8 @@ public class CourseAssignmentService(ScheduleDbContext db)
             query = query.Where(ca => ca.ClassId == classId.Value);
         if (teacherId.HasValue)
             query = query.Where(ca => ca.TeacherId == teacherId.Value);
+        else if (unassigned)
+            query = query.Where(ca => ca.TeacherId == null);
 
         return query
             .OrderBy(ca => ca.Class.GradeYear)
@@ -106,11 +116,11 @@ public class CourseAssignmentService(ScheduleDbContext db)
             .Where(ca => ca.SemesterId == semesterId && ca.ClassId == req.TargetClassId)
             .ToListAsync();
 
-        var (created, updated, skipped) = ApplyCopy(semesterId, req.TargetClassId, sourceAssignments, targetAssignments);
+        var (created, skipped) = ApplyCopy(semesterId, req.TargetClassId, sourceAssignments, targetAssignments);
 
         await db.SaveChangesAsync();
         var assignments = await GetAssignmentsAsync(semesterId, classId: req.TargetClassId);
-        return (null, new CopyCourseAssignmentsResponse(created, updated, skipped, assignments));
+        return (null, new CopyCourseAssignmentsResponse(created, skipped, assignments));
     }
 
     public async Task<(string? Error, CopyCourseAssignmentsToGradeResponse? Result)> CopyToGradeAsync(int semesterId, CopyCourseAssignmentsToGradeRequest req)
@@ -127,7 +137,7 @@ public class CourseAssignmentService(ScheduleDbContext db)
             .Select(c => c.Id)
             .ToListAsync();
 
-        if (targetClassIds.Count == 0) return (null, new CopyCourseAssignmentsToGradeResponse(0, 0, 0, 0));
+        if (targetClassIds.Count == 0) return (null, new CopyCourseAssignmentsToGradeResponse(0, 0, 0));
 
         var sourceAssignments = await db.CourseAssignments
             .Where(ca => ca.SemesterId == semesterId && ca.ClassId == req.SourceClassId)
@@ -138,22 +148,21 @@ public class CourseAssignmentService(ScheduleDbContext db)
             .Where(ca => ca.SemesterId == semesterId && targetClassIds.Contains(ca.ClassId))
             .ToListAsync();
 
-        int totalCreated = 0, totalUpdated = 0, totalSkipped = 0;
+        int totalCreated = 0, totalSkipped = 0;
 
         foreach (var targetClassId in targetClassIds)
         {
             var classTargetAssignments = targetAssignments.Where(ca => ca.ClassId == targetClassId).ToList();
-            var (created, updated, skipped) = ApplyCopy(semesterId, targetClassId, sourceAssignments, classTargetAssignments);
+            var (created, skipped) = ApplyCopy(semesterId, targetClassId, sourceAssignments, classTargetAssignments);
             totalCreated += created;
-            totalUpdated += updated;
             totalSkipped += skipped;
         }
 
         await db.SaveChangesAsync();
-        return (null, new CopyCourseAssignmentsToGradeResponse(targetClassIds.Count, totalCreated, totalUpdated, totalSkipped));
+        return (null, new CopyCourseAssignmentsToGradeResponse(targetClassIds.Count, totalCreated, totalSkipped));
     }
 
-    private (int Created, int Updated, int Skipped) ApplyCopy(int semesterId, int targetClassId, List<CourseAssignment> sourceAssignments, List<CourseAssignment> targetAssignments)
+    private (int Created, int Skipped) ApplyCopy(int semesterId, int targetClassId, List<CourseAssignment> sourceAssignments, List<CourseAssignment> targetAssignments)
     {
         int created = 0, skipped = 0;
         var processedCourseIds = new HashSet<int>();
@@ -181,13 +190,13 @@ public class CourseAssignmentService(ScheduleDbContext db)
             created++;
         }
 
-        return (created, 0, skipped);
+        return (created, skipped);
     }
 
     public async Task<string?> AssignTeacherAsync(int semesterId, AssignTeacherRequest req)
     {
-        var teacherExists = await db.Teachers.AnyAsync(t => t.Id == req.TeacherId);
-        if (!teacherExists) return "指定的教師不存在";
+        var teacher = await db.Teachers.FirstOrDefaultAsync(t => t.Id == req.TeacherId);
+        if (teacher is null) return "指定的教師不存在";
 
         var assignments = await db.CourseAssignments
             .Where(ca => req.AssignmentIds.Contains(ca.Id) && ca.SemesterId == semesterId && ca.TeacherId == null)
@@ -196,6 +205,15 @@ public class CourseAssignmentService(ScheduleDbContext db)
         if (assignments.Count != req.AssignmentIds.Count)
             return "部分配課記錄不存在、不屬於此學期或已有教師";
 
+        var currentWeeklyPeriods = await db.CourseAssignments
+            .Where(ca => ca.SemesterId == semesterId && ca.TeacherId == req.TeacherId)
+            .SumAsync(ca => (int?)ca.WeeklyPeriods) ?? 0;
+
+        var requestedWeeklyPeriods = assignments.Sum(a => a.WeeklyPeriods);
+        var maxPeriodsError = ValidateTeacherWeeklyPeriods(teacher, currentWeeklyPeriods + requestedWeeklyPeriods, req.Force);
+        if (maxPeriodsError is not null)
+            return maxPeriodsError;
+
         foreach (var a in assignments)
             a.TeacherId = req.TeacherId;
 
@@ -203,22 +221,26 @@ public class CourseAssignmentService(ScheduleDbContext db)
         return null;
     }
 
-    public async Task UnassignTeacherAsync(int semesterId, UnassignTeacherRequest req)
+    public async Task<string?> UnassignTeacherAsync(int semesterId, UnassignTeacherRequest req)
     {
         var assignments = await db.CourseAssignments
             .Where(ca => req.AssignmentIds.Contains(ca.Id) && ca.SemesterId == semesterId)
             .ToListAsync();
 
+        if (assignments.Count != req.AssignmentIds.Count)
+            return $"部分配課記錄不存在或不屬於此學期（預期 {req.AssignmentIds.Count} 筆，找到 {assignments.Count} 筆）";
+
         foreach (var a in assignments)
             a.TeacherId = null;
 
         await db.SaveChangesAsync();
+        return null;
     }
 
     public async Task<(string? Error, BatchCourseAssignmentResponse? Result)> BatchByTeacherAsync(int semesterId, BatchTeacherAssignmentRequest req)
     {
-        var teacherExists = await db.Teachers.AnyAsync(t => t.Id == req.TeacherId);
-        if (!teacherExists) return ("指定的教師不存在", null);
+        var teacher = await db.Teachers.FirstOrDefaultAsync(t => t.Id == req.TeacherId);
+        if (teacher is null) return ("指定的教師不存在", null);
 
         var existing = await db.CourseAssignments
             .Include(ca => ca.TimetableSlots)
@@ -228,6 +250,34 @@ public class CourseAssignmentService(ScheduleDbContext db)
         var unassigned = await db.CourseAssignments
             .Where(ca => ca.SemesterId == semesterId && ca.TeacherId == null)
             .ToListAsync();
+
+        var projectedWeeklyPeriods = existing.Sum(ca => ca.WeeklyPeriods);
+
+        foreach (var deleteId in req.DeleteIds)
+        {
+            var toDelete = existing.FirstOrDefault(ca => ca.Id == deleteId);
+            if (toDelete is null) continue;
+
+            projectedWeeklyPeriods -= toDelete.WeeklyPeriods;
+        }
+
+        foreach (var item in req.Upserts)
+        {
+            if (item.Id is int existingId)
+            {
+                var assignment = existing.FirstOrDefault(ca => ca.Id == existingId);
+                if (assignment is null) continue;
+
+                projectedWeeklyPeriods += item.WeeklyPeriods - assignment.WeeklyPeriods;
+                continue;
+            }
+
+            projectedWeeklyPeriods += item.WeeklyPeriods;
+        }
+
+        var maxPeriodsError = ValidateTeacherWeeklyPeriods(teacher, projectedWeeklyPeriods, req.Force);
+        if (maxPeriodsError is not null)
+            return (maxPeriodsError, null);
 
         int created = 0, updated = 0, deleted = 0;
 

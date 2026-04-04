@@ -99,10 +99,11 @@ export const importCoursesExcel = async (file: File) => {
 };
 
 // Course Assignments
-export const getCourseAssignments = (semesterId: number, classId?: number, teacherId?: number) => {
-  const params: Record<string, number> = {};
+export const getCourseAssignments = (semesterId: number, classId?: number, teacherId?: number, unassigned?: boolean) => {
+  const params: Record<string, number | boolean> = {};
   if (classId) params.classId = classId;
   if (teacherId) params.teacherId = teacherId;
+  if (unassigned) params.unassigned = true;
   return api.get<CourseAssignment[]>(`/semesters/${semesterId}/course-assignments`, { params }).then(r => r.data);
 };
 export const createCourseAssignment = (semesterId: number, data: { courseId: number; teacherId: number | null; classId: number; weeklyPeriods: number }) =>

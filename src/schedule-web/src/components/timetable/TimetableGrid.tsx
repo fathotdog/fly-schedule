@@ -15,7 +15,7 @@ export function TimetableGrid() {
     currentSemesterId, selectedClassId, selectedTeacherId,
     selectedCourseAssignmentId, setSelectedCourseAssignmentId,
     setSelectedTeacherId, setSelectedClassId,
-    timetableViewMode,
+    timetableViewMode, selectedSpecialRoomId,
   } = useScheduleStore();
 
   const isClassMode = timetableViewMode === 'class';
@@ -66,6 +66,7 @@ export function TimetableGrid() {
         courseAssignmentId: selectedCourseAssignmentId!,
         dayOfWeek: params.dayOfWeek,
         periodId: params.periodId,
+        ...(selectedSpecialRoomId != null && { specialRoomId: selectedSpecialRoomId }),
       }),
     onSuccess: async () => {
       await invalidateTimetableQueries(qc);
@@ -313,6 +314,9 @@ function SlotCell({ slot, isClassMode, isDragging, onRemove, onToggleLock, onSec
             onClick={onSecondaryClick}>
             {isClassMode ? slot.teacherName : slot.classDisplayName}
           </button>
+          {slot.specialRoomName && (
+            <div className="text-[10px] text-on-surface-variant/70 truncate">{slot.specialRoomName}</div>
+          )}
         </div>
         {slot.isLocked && (
           <Lock className="w-3 h-3 shrink-0 mt-0.5" style={{ color: slot.courseColorCode }} />

@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getTeacherSchedule, getPeriods, getCourseAssignments, createTimetableSlot } from '@/api/client';
+import { getTeacherSchedule, getPeriods, getCourseAssignments, createTimetableSlot, getSpecialRooms } from '@/api/client';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { User } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DAY_NAMES, SCHOOL_DAYS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { handleConflictError, invalidateTimetableQueries, makeSlotMap } from '@/lib/timetable';
@@ -13,6 +14,7 @@ export function TeacherSchedulePanel() {
   const qc = useQueryClient();
   const { currentSemesterId, selectedTeacherId } = useScheduleStore();
   const [addTarget, setAddTarget] = useState<{ dayOfWeek: number; periodId: number; x: number; y: number } | null>(null);
+  const [dialogRoomId, setDialogRoomId] = useState<number | null>(null);
 
   const { data } = useQuery({
     queryKey: ['teacherSchedule', currentSemesterId, selectedTeacherId],
@@ -32,17 +34,24 @@ export function TeacherSchedulePanel() {
     enabled: !!currentSemesterId && !!selectedTeacherId,
   });
 
+  const { data: rooms = [] } = useQuery({
+    queryKey: ['specialRooms'],
+    queryFn: getSpecialRooms,
+  });
+
   const addMut = useMutation({
-    mutationFn: (params: { courseAssignmentId: number; dayOfWeek: number; periodId: number }) =>
+    mutationFn: (params: { courseAssignmentId: number; dayOfWeek: number; periodId: number; specialRoomId?: number }) =>
       createTimetableSlot(currentSemesterId!, {
         courseAssignmentId: params.courseAssignmentId,
         dayOfWeek: params.dayOfWeek,
         periodId: params.periodId,
+        ...(params.specialRoomId != null && { specialRoomId: params.specialRoomId }),
       }),
     onSuccess: () => {
       invalidateTimetableQueries(qc);
       qc.invalidateQueries({ queryKey: ['courseAssignments'] });
       setAddTarget(null);
+      setDialogRoomId(null);
     },
     onError: (err) => handleConflictError(err, '排課失敗'),
   });
@@ -97,6 +106,9 @@ export function TeacherSchedulePanel() {
                       <div>
                         <div className="font-medium" style={{ color: slot.courseColorCode }}>{slot.courseName}</div>
                         <div className="text-on-surface-variant">{slot.classDisplayName}</div>
+                        {slot.specialRoomName && (
+                          <div className="text-[10px] text-on-surface-variant/70 truncate">{slot.specialRoomName}</div>
+                        )}
                       </div>
                     )}
                   </td>
@@ -107,18 +119,37 @@ export function TeacherSchedulePanel() {
         </tbody>
       </table>
 
-      <Dialog open={!!addTarget} onOpenChange={(open) => { if (!open) setAddTarget(null); }}>
+      <Dialog open={!!addTarget} onOpenChange={(open) => { if (!open) { setAddTarget(null); setDialogRoomId(null); } }}>
         <DialogContent
           className="max-w-xs !translate-x-0 !translate-y-0 !animate-none data-open:!animate-none data-closed:!animate-none !duration-0"
           style={addTarget ? {
-            top: `${Math.min(addTarget.y, window.innerHeight - 350)}px`,
+            top: `${Math.min(addTarget.y, window.innerHeight - 400)}px`,
             left: `${Math.min(addTarget.x, window.innerWidth - 320)}px`,
           } : undefined}
         >
           <DialogHeader>
             <DialogTitle>選擇配課</DialogTitle>
           </DialogHeader>
-          <div className="space-y-1 max-h-64 overflow-auto">
+          {rooms.length > 0 && (
+            <div className="pb-2">
+              <div className="text-xs text-on-surface-variant mb-1">專科教室（選填）</div>
+              <Select
+                value={dialogRoomId != null ? String(dialogRoomId) : ''}
+                onValueChange={(val: string | null) => setDialogRoomId(val ? Number(val) : null)}
+              >
+                <SelectTrigger className="w-full" size="sm">
+                  <SelectValue placeholder="不指定" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">不指定</SelectItem>
+                  {rooms.map(room => (
+                    <SelectItem key={room.id} value={String(room.id)}>{room.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <div className="space-y-1 max-h-56 overflow-auto">
             {availableAssignments.length === 0 ? (
               <div className="text-center text-on-surface-variant text-sm py-4">此教師所有配課皆已排滿</div>
             ) : (
@@ -131,6 +162,7 @@ export function TeacherSchedulePanel() {
                     courseAssignmentId: ca.id,
                     dayOfWeek: addTarget.dayOfWeek,
                     periodId: addTarget.periodId,
+                    specialRoomId: dialogRoomId ?? undefined,
                   })}
                 >
                   <div className="flex items-center gap-2">

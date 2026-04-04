@@ -27,26 +27,9 @@ public static class CourseAssignmentEndpoints
             return Results.Ok(result);
         }).DisableAntiforgery();
 
-        group.MapGet("/", async (int semesterId, int? classId, int? teacherId, ScheduleDbContext db) =>
+        group.MapGet("/", async (int semesterId, int? classId, int? teacherId, bool unassigned, CourseAssignmentService svc) =>
         {
-            var query = db.CourseAssignments
-                .Include(ca => ca.Course)
-                .Include(ca => ca.Teacher)
-                .Include(ca => ca.Class)
-                .Include(ca => ca.TimetableSlots)
-                .Where(ca => ca.SemesterId == semesterId);
-
-            if (classId.HasValue)
-                query = query.Where(ca => ca.ClassId == classId.Value);
-            if (teacherId.HasValue)
-                query = query.Where(ca => ca.TeacherId == teacherId.Value);
-
-            return await query.OrderBy(ca => ca.Class.GradeYear)
-                .ThenBy(ca => ca.Class.Section)
-                .ThenBy(ca => ca.Course.SortOrder)
-                .ThenBy(ca => ca.Course.Name)
-                .Select(CourseAssignmentMapper.ToDto)
-                .ToListAsync();
+            return await svc.GetAssignmentsAsync(semesterId, classId, teacherId, unassigned);
         });
 
         group.MapPost("/", async (int semesterId, CreateCourseAssignmentRequest req, ScheduleDbContext db) =>
@@ -107,8 +90,11 @@ public static class CourseAssignmentEndpoints
         group.MapDelete("/{id:int}", async (int semesterId, int id, ScheduleDbContext db) =>
         {
             var assignment = await db.CourseAssignments
+                .Include(ca => ca.TimetableSlots)
                 .FirstOrDefaultAsync(ca => ca.Id == id && ca.SemesterId == semesterId);
             if (assignment is null) return Results.NotFound();
+            if (assignment.TimetableSlots.Count > 0)
+                return Results.BadRequest($"課程已排課 {assignment.TimetableSlots.Count} 節，無法刪除配課");
             db.CourseAssignments.Remove(assignment);
             await db.SaveChangesAsync();
             return Results.NoContent();
@@ -140,8 +126,8 @@ public static class CourseAssignmentEndpoints
 
         group.MapPost("/unassign-teacher", async (int semesterId, UnassignTeacherRequest req, CourseAssignmentService svc) =>
         {
-            await svc.UnassignTeacherAsync(semesterId, req);
-            return Results.Ok();
+            var error = await svc.UnassignTeacherAsync(semesterId, req);
+            return error is not null ? Results.BadRequest(error) : Results.Ok();
         });
 
         group.MapPost("/batch-by-teacher", async (int semesterId, BatchTeacherAssignmentRequest req, CourseAssignmentService svc) =>

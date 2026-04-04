@@ -164,6 +164,7 @@ export interface BatchTeacherAssignmentRequest {
   teacherId: number;
   upserts: BatchTeacherAssignmentItem[];
   deleteIds: number[];
+  force?: boolean;
 }
 
 export interface CopyCourseAssignmentsRequest {
@@ -173,7 +174,6 @@ export interface CopyCourseAssignmentsRequest {
 
 export interface CopyCourseAssignmentsResponse {
   created: number;
-  updated: number;
   skipped: number;
   assignments: CourseAssignment[];
 }
@@ -185,13 +185,13 @@ export interface CopyCourseAssignmentsToGradeRequest {
 export interface CopyCourseAssignmentsToGradeResponse {
   targetClassCount: number;
   created: number;
-  updated: number;
   skipped: number;
 }
 
 export interface AssignTeacherRequest {
   assignmentIds: number[];
   teacherId: number;
+  force?: boolean;
 }
 
 export interface UnassignTeacherRequest {

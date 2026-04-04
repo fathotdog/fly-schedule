@@ -9,7 +9,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { SearchSelect } from '@/components/ui/search-select';
 import { CourseDot } from '@/components/ui/course-dot';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, RotateCcw } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { BookOpen, RotateCcw, AlertTriangle } from 'lucide-react';
+import { toast } from 'sonner';
+import axios from 'axios';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableTableHead } from '@/components/ui/sortable-table-head';
@@ -17,12 +20,20 @@ import type { CourseAssignment } from '@/api/types';
 import { ClaimUnassignedDialog } from './ClaimUnassignedDialog';
 import type { ClaimItem } from './ClaimUnassignedDialog';
 import { EMPTY_ARR } from '@/lib/constants';
+import { getApiErrorMessage } from '@/api/errors';
+
+type AssignTeacherVariables = {
+  assignmentIds: number[];
+  force?: boolean;
+  suppressErrorToast?: boolean;
+};
 
 export function BatchAssignmentByTeacherPanel() {
   const qc = useQueryClient();
   const { currentSemesterId } = useScheduleStore();
   const [selectedTeacherId, setSelectedTeacherId] = useState(0);
   const [claimDialogOpen, setClaimDialogOpen] = useState(false);
+  const [forceConfirm, setForceConfirm] = useState<{ message: string; assignmentIds: number[] } | null>(null);
 
   const { data: teachers = [] } = useQuery({ queryKey: ['teachers'], queryFn: getTeachers });
 
@@ -33,15 +44,15 @@ export function BatchAssignmentByTeacherPanel() {
   });
 
   const { data: allAssignments = EMPTY_ARR } = useQuery({
-    queryKey: ['courseAssignments', currentSemesterId],
-    queryFn: () => getCourseAssignments(currentSemesterId!),
+    queryKey: ['courseAssignments', currentSemesterId, 'unassigned'],
+    queryFn: () => getCourseAssignments(currentSemesterId!, undefined, undefined, true),
     enabled: !!currentSemesterId && selectedTeacherId > 0,
   });
 
   const { data: classes = [] } = useClasses();
 
   const unassignedAssignments = useMemo(
-    () => allAssignments.filter(a => a.teacherId === null && a.weeklyPeriods > 0),
+    () => allAssignments.filter(a => a.weeklyPeriods > 0),
     [allAssignments]
   );
 
@@ -72,11 +83,29 @@ export function BatchAssignmentByTeacherPanel() {
   const totalClaimedPeriods = useMemo(() => claimedAssignments.reduce((sum, a) => sum + a.weeklyPeriods, 0), [claimedAssignments]);
   const maxPeriods = selectedTeacher?.maxWeeklyPeriods ?? 0;
 
+  const getMaxWeeklyPeriodsError = (err: unknown) => {
+    if (!axios.isAxiosError(err) || err.response?.status !== 400) return null;
+    const msg = err.response.data;
+    return typeof msg === 'string' && msg.includes('每週節數上限') ? msg : null;
+  };
+
   const assignMut = useMutation({
-    mutationFn: (assignmentIds: number[]) =>
-      assignTeacher(currentSemesterId!, { assignmentIds, teacherId: selectedTeacherId }),
+    mutationFn: ({ assignmentIds, force }: AssignTeacherVariables) =>
+      assignTeacher(currentSemesterId!, { assignmentIds, teacherId: selectedTeacherId, force }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['courseAssignments'] });
+      setForceConfirm(null);
+    },
+    onError: (err: unknown, variables) => {
+      const maxPeriodsError = getMaxWeeklyPeriodsError(err);
+      if (maxPeriodsError) {
+        setForceConfirm({ message: maxPeriodsError, assignmentIds: variables.assignmentIds });
+        return;
+      }
+
+      if (!variables.suppressErrorToast) {
+        toast.error(getApiErrorMessage(err, '指定教師失敗'));
+      }
     },
   });
 
@@ -86,11 +115,37 @@ export function BatchAssignmentByTeacherPanel() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['courseAssignments'] });
     },
+    onError: (err: unknown) => {
+      toast.error(getApiErrorMessage(err, '退回課程失敗'));
+    },
   });
 
   const handleClaim = (items: ClaimItem[]) => {
     const ids = items.map(item => item.id);
-    if (ids.length > 0) assignMut.mutate(ids);
+    if (ids.length === 0) return;
+
+    const toastId = toast.loading('認領課程中...');
+    assignMut.mutate(
+      { assignmentIds: ids, suppressErrorToast: true },
+      {
+        onSuccess: () => {
+          toast.success(`已認領 ${ids.length} 筆課程`, { id: toastId });
+        },
+        onError: (err) => {
+          if (getMaxWeeklyPeriodsError(err)) {
+            toast.dismiss(toastId);
+            return;
+          }
+
+          toast.error(getApiErrorMessage(err, '認領課程失敗'), { id: toastId });
+        },
+      }
+    );
+  };
+
+  const handleForceConfirm = () => {
+    if (!forceConfirm) return;
+    assignMut.mutate({ assignmentIds: forceConfirm.assignmentIds, force: true });
   };
 
   if (!currentSemesterId) return <p className="text-on-surface-variant">請先選擇目前學期</p>;
@@ -214,6 +269,27 @@ export function BatchAssignmentByTeacherPanel() {
         items={claimItems}
         onClaim={handleClaim}
       />
+
+      {/* MaxWeeklyPeriods force confirmation dialog */}
+      <Dialog open={forceConfirm !== null} onOpenChange={(open) => { if (!open) setForceConfirm(null); }}>
+        <DialogContent className="sm:max-w-md" showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              超出每週節數上限
+            </DialogTitle>
+            <DialogDescription>{forceConfirm?.message}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setForceConfirm(null)} disabled={assignMut.isPending}>
+              取消
+            </Button>
+            <Button onClick={handleForceConfirm} disabled={assignMut.isPending}>
+              {assignMut.isPending ? '指定中...' : '仍然指定'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

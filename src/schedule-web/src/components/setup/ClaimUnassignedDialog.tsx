@@ -51,14 +51,15 @@ export function ClaimUnassignedDialog({ open, onOpenChange, items, onClaim }: Pr
   const [filterCourseId, setFilterCourseId] = useState(0);
   const [filterGrade, setFilterGrade] = useState(0);
 
-  // Reset when dialog opens
-  useEffect(() => {
-    if (open) {
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (nextOpen) {
       setSelectedKeys(new Set());
       setFilterCourseId(0);
       setFilterGrade(0);
     }
-  }, [open]);
+
+    onOpenChange(nextOpen);
+  };
 
   const grades = useMemo(() => {
     const s = new Set<number>();
@@ -130,12 +131,12 @@ export function ClaimUnassignedDialog({ open, onOpenChange, items, onClaim }: Pr
 
   const handleConfirm = () => {
     const claimed = items.filter(i => selectedKeys.has(itemKey(i)));
-    onClaim(claimed);
     onOpenChange(false);
+    onClaim(claimed);
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-2xl" showCloseButton>
         <DialogHeader>
           <DialogTitle>認領待配課程</DialogTitle>

@@ -77,6 +77,27 @@ public class CourseAssignmentServiceTests
     }
 
     [Fact]
+    public async Task GetAssignments_FiltersUnassignedAssignments()
+    {
+        var (db, semester, class1, class2, course1, course2) = await SetupAsync();
+        var teacher = new Teacher { Name = "王老師", StaffTitleId = 1, MaxWeeklyPeriods = 20 };
+        db.Teachers.Add(teacher);
+        db.CourseAssignments.AddRange(
+            new CourseAssignment { SemesterId = semester.Id, ClassId = class1.Id, CourseId = course1.Id, TeacherId = null, WeeklyPeriods = 4 },
+            new CourseAssignment { SemesterId = semester.Id, ClassId = class2.Id, CourseId = course2.Id, Teacher = teacher, WeeklyPeriods = 3 }
+        );
+        await db.SaveChangesAsync();
+
+        var svc = new CourseAssignmentService(db);
+
+        var assignments = await svc.GetAssignmentsAsync(semester.Id, unassigned: true);
+
+        Assert.Single(assignments);
+        Assert.Null(assignments[0].TeacherId);
+        Assert.Equal(class1.DisplayName, assignments[0].ClassDisplayName);
+    }
+
+    [Fact]
     public async Task Batch_RejectsInvalidClass()
     {
         var (db, semester, _, _, course1, _) = await SetupAsync();
@@ -286,6 +307,79 @@ public class CourseAssignmentServiceTests
     }
 
     [Fact]
+    public async Task AssignTeacher_RejectsWhenTeacherWouldExceedMaxWeeklyPeriods()
+    {
+        var (db, semester, class1, class2, course1, course2) = await SetupAsync();
+        var teacher = new Teacher { Name = "王老師", StaffTitleId = 1, MaxWeeklyPeriods = 10 };
+        db.Teachers.Add(teacher);
+        db.CourseAssignments.AddRange(
+            new CourseAssignment
+            {
+                SemesterId = semester.Id,
+                ClassId = class1.Id,
+                CourseId = course1.Id,
+                Teacher = teacher,
+                WeeklyPeriods = 6
+            },
+            new CourseAssignment
+            {
+                SemesterId = semester.Id,
+                ClassId = class2.Id,
+                CourseId = course2.Id,
+                TeacherId = null,
+                WeeklyPeriods = 6
+            }
+        );
+        await db.SaveChangesAsync();
+
+        var targetAssignment = await db.CourseAssignments.SingleAsync(ca => ca.TeacherId == null);
+        var svc = new CourseAssignmentService(db);
+
+        var error = await svc.AssignTeacherAsync(semester.Id, new AssignTeacherRequest([targetAssignment.Id], teacher.Id));
+
+        Assert.NotNull(error);
+        Assert.Contains("force=true", error);
+        var reloaded = await db.CourseAssignments.FindAsync(targetAssignment.Id);
+        Assert.Null(reloaded!.TeacherId);
+    }
+
+    [Fact]
+    public async Task AssignTeacher_AllowsForceWhenTeacherWouldExceedMaxWeeklyPeriods()
+    {
+        var (db, semester, class1, class2, course1, course2) = await SetupAsync();
+        var teacher = new Teacher { Name = "王老師", StaffTitleId = 1, MaxWeeklyPeriods = 10 };
+        db.Teachers.Add(teacher);
+        db.CourseAssignments.AddRange(
+            new CourseAssignment
+            {
+                SemesterId = semester.Id,
+                ClassId = class1.Id,
+                CourseId = course1.Id,
+                Teacher = teacher,
+                WeeklyPeriods = 6
+            },
+            new CourseAssignment
+            {
+                SemesterId = semester.Id,
+                ClassId = class2.Id,
+                CourseId = course2.Id,
+                TeacherId = null,
+                WeeklyPeriods = 6
+            }
+        );
+        await db.SaveChangesAsync();
+
+        var targetAssignment = await db.CourseAssignments.SingleAsync(ca => ca.TeacherId == null);
+        var svc = new CourseAssignmentService(db);
+
+        var error = await svc.AssignTeacherAsync(semester.Id, new AssignTeacherRequest([targetAssignment.Id], teacher.Id, Force: true));
+
+        Assert.Null(error);
+        var reloaded = await db.CourseAssignments.FindAsync(targetAssignment.Id);
+        Assert.Equal(teacher.Id, reloaded!.TeacherId);
+    }
+
+    [Fact]
     public async Task UnassignTeacher_ClearsTeacherId()
     {
         var (db, semester, class1, _, course1, _) = await SetupAsync();
@@ -303,9 +397,118 @@ public class CourseAssignmentServiceTests
         await db.SaveChangesAsync();
 
         var svc = new CourseAssignmentService(db);
-        await svc.UnassignTeacherAsync(semester.Id, new UnassignTeacherRequest([assignment.Id]));
+        var error = await svc.UnassignTeacherAsync(semester.Id, new UnassignTeacherRequest([assignment.Id]));
 
+        Assert.Null(error);
         var updated = await db.CourseAssignments.FindAsync(assignment.Id);
         Assert.Null(updated!.TeacherId);
+    }
+
+    [Fact]
+    public async Task UnassignTeacher_RejectsNonexistentIds()
+    {
+        var (db, semester, class1, _, course1, _) = await SetupAsync();
+        var teacher = new Teacher { Name = "王老師", StaffTitleId = 1, MaxWeeklyPeriods = 20 };
+        db.Teachers.Add(teacher);
+        var assignment = new CourseAssignment
+        {
+            SemesterId = semester.Id,
+            ClassId = class1.Id,
+            CourseId = course1.Id,
+            Teacher = teacher,
+            WeeklyPeriods = 4
+        };
+        db.CourseAssignments.Add(assignment);
+        await db.SaveChangesAsync();
+
+        var svc = new CourseAssignmentService(db);
+        var error = await svc.UnassignTeacherAsync(semester.Id, new UnassignTeacherRequest([assignment.Id, 9999]));
+
+        Assert.NotNull(error);
+        // Teacher should NOT have been unassigned since the request was rejected
+        var reloaded = await db.CourseAssignments.FindAsync(assignment.Id);
+        Assert.Equal(teacher.Id, reloaded!.TeacherId);
+    }
+
+    [Fact]
+    public async Task BatchByTeacher_RejectsWhenTeacherWouldExceedMaxWeeklyPeriods()
+    {
+        var (db, semester, class1, class2, course1, course2) = await SetupAsync();
+        var teacher = new Teacher { Name = "王老師", StaffTitleId = 1, MaxWeeklyPeriods = 10 };
+        db.Teachers.Add(teacher);
+        db.CourseAssignments.AddRange(
+            new CourseAssignment
+            {
+                SemesterId = semester.Id,
+                ClassId = class1.Id,
+                CourseId = course1.Id,
+                Teacher = teacher,
+                WeeklyPeriods = 6
+            },
+            new CourseAssignment
+            {
+                SemesterId = semester.Id,
+                ClassId = class2.Id,
+                CourseId = course2.Id,
+                TeacherId = null,
+                WeeklyPeriods = 6
+            }
+        );
+        await db.SaveChangesAsync();
+
+        var svc = new CourseAssignmentService(db);
+        var req = new BatchTeacherAssignmentRequest(
+            TeacherId: teacher.Id,
+            Upserts: [new BatchTeacherAssignmentItem(null, course2.Id, class2.Id, 6)],
+            DeleteIds: []
+        );
+
+        var (error, result) = await svc.BatchByTeacherAsync(semester.Id, req);
+
+        Assert.NotNull(error);
+        Assert.Null(result);
+        var reloaded = await db.CourseAssignments.SingleAsync(ca => ca.ClassId == class2.Id && ca.CourseId == course2.Id);
+        Assert.Null(reloaded.TeacherId);
+    }
+
+    [Fact]
+    public async Task BatchByTeacher_AllowsForceWhenTeacherWouldExceedMaxWeeklyPeriods()
+    {
+        var (db, semester, class1, class2, course1, course2) = await SetupAsync();
+        var teacher = new Teacher { Name = "王老師", StaffTitleId = 1, MaxWeeklyPeriods = 10 };
+        db.Teachers.Add(teacher);
+        db.CourseAssignments.AddRange(
+            new CourseAssignment
+            {
+                SemesterId = semester.Id,
+                ClassId = class1.Id,
+                CourseId = course1.Id,
+                Teacher = teacher,
+                WeeklyPeriods = 6
+            },
+            new CourseAssignment
+            {
+                SemesterId = semester.Id,
+                ClassId = class2.Id,
+                CourseId = course2.Id,
+                TeacherId = null,
+                WeeklyPeriods = 6
+            }
+        );
+        await db.SaveChangesAsync();
+
+        var svc = new CourseAssignmentService(db);
+        var req = new BatchTeacherAssignmentRequest(
+            TeacherId: teacher.Id,
+            Upserts: [new BatchTeacherAssignmentItem(null, course2.Id, class2.Id, 6)],
+            DeleteIds: [],
+            Force: true
+        );
+
+        var (error, result) = await svc.BatchByTeacherAsync(semester.Id, req);
+
+        Assert.Null(error);
+        Assert.NotNull(result);
+        Assert.Contains(result.Assignments, a => a.ClassId == class2.Id && a.CourseId == course2.Id);
     }
 }

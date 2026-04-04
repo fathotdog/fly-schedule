@@ -1,6 +1,7 @@
 import { ClassSelector } from './ClassSelector';
 import { TeacherSelector } from './TeacherSelector';
 import { SubjectSelector } from './SubjectSelector';
+import { RoomSelector } from './RoomSelector';
 import { TimetableGrid } from './TimetableGrid';
 import { TeacherSchedulePanel } from './TeacherSchedulePanel';
 import { ClassSchedulePanel } from './ClassSchedulePanel';
@@ -71,6 +72,7 @@ export function TimetablePage() {
           </Button>
         </div>
         <SubjectSelector />
+        <RoomSelector />
       </div>
 
       {/* Center - Timetable grid */}

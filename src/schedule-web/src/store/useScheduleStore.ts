@@ -9,6 +9,7 @@ interface ScheduleState {
   selectedClassId: number | null;
   selectedCourseAssignmentId: number | null;
   selectedTeacherId: number | null;
+  selectedSpecialRoomId: number | null;
   activeTab: string;
   sidebarCollapsed: boolean;
   timetableViewMode: TimetableViewMode;
@@ -16,6 +17,7 @@ interface ScheduleState {
   setSelectedClassId: (id: number | null) => void;
   setSelectedCourseAssignmentId: (id: number | null) => void;
   setSelectedTeacherId: (id: number | null) => void;
+  setSelectedSpecialRoomId: (id: number | null) => void;
   setActiveTab: (tab: string) => void;
   toggleSidebar: () => void;
   setTimetableViewMode: (mode: TimetableViewMode) => void;
@@ -29,16 +31,18 @@ export const useScheduleStore = create<ScheduleState>()(
       selectedClassId: null,
       selectedCourseAssignmentId: null,
       selectedTeacherId: null,
+      selectedSpecialRoomId: null,
       activeTab: 'dashboard',
       sidebarCollapsed: false,
       timetableViewMode: 'class',
       setCurrentSemesterId: (id, name) => set({ currentSemesterId: id, currentSemesterName: name || null, selectedClassId: null }),
-      setSelectedClassId: (id) => set({ selectedClassId: id, selectedCourseAssignmentId: null }),
+      setSelectedClassId: (id) => set({ selectedClassId: id, selectedCourseAssignmentId: null, selectedSpecialRoomId: null }),
       setSelectedCourseAssignmentId: (id) => set({ selectedCourseAssignmentId: id }),
-      setSelectedTeacherId: (id) => set({ selectedTeacherId: id }),
+      setSelectedTeacherId: (id) => set({ selectedTeacherId: id, selectedSpecialRoomId: null }),
+      setSelectedSpecialRoomId: (id) => set({ selectedSpecialRoomId: id }),
       setActiveTab: (tab) => set({ activeTab: tab, ...(tab === 'timetable' ? { sidebarCollapsed: true } : {}) }),
       toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
-      setTimetableViewMode: (mode) => set({ timetableViewMode: mode, selectedCourseAssignmentId: null }),
+      setTimetableViewMode: (mode) => set({ timetableViewMode: mode, selectedCourseAssignmentId: null, selectedSpecialRoomId: null }),
     }),
     {
       name: 'schedule-ui-state',

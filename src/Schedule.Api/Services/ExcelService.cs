@@ -231,7 +231,7 @@ public class ExcelService(ScheduleDbContext db)
             var teacherName = row.Cell(3).GetString().Trim();
             var weeklyPeriods = (int)row.Cell(4).GetDouble();
 
-            if (string.IsNullOrWhiteSpace(className) || string.IsNullOrWhiteSpace(courseName) || string.IsNullOrWhiteSpace(teacherName))
+            if (string.IsNullOrWhiteSpace(className) || string.IsNullOrWhiteSpace(courseName))
             {
                 skipped++;
                 continue;
@@ -239,20 +239,22 @@ public class ExcelService(ScheduleDbContext db)
 
             var schoolClass = classes.FirstOrDefault(c => c.DisplayName == className);
             var course = courses.FirstOrDefault(c => c.Name == courseName);
-            var teacher = teachers.FirstOrDefault(t => t.Name == teacherName);
+            var teacher = string.IsNullOrWhiteSpace(teacherName)
+                ? null
+                : teachers.FirstOrDefault(t => t.Name == teacherName);
 
-            if (schoolClass is null || course is null || teacher is null)
+            if (schoolClass is null || course is null || (!string.IsNullOrWhiteSpace(teacherName) && teacher is null))
             {
                 skipped++;
                 continue;
             }
 
             var existing = existingAssignments.FirstOrDefault(ca =>
-                ca.CourseId == course.Id && ca.ClassId == schoolClass.Id && ca.TeacherId == teacher.Id);
+                ca.CourseId == course.Id && ca.ClassId == schoolClass.Id && ca.TeacherId == teacher?.Id);
 
             if (existing is not null)
             {
-                existing.TeacherId = teacher.Id;
+                existing.TeacherId = teacher?.Id;
                 existing.WeeklyPeriods = weeklyPeriods;
                 updated++;
             }
@@ -262,7 +264,7 @@ public class ExcelService(ScheduleDbContext db)
                 {
                     SemesterId = semesterId,
                     CourseId = course.Id,
-                    TeacherId = teacher.Id,
+                    TeacherId = teacher?.Id,
                     ClassId = schoolClass.Id,
                     WeeklyPeriods = weeklyPeriods
                 };

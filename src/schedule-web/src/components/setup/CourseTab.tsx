@@ -75,15 +75,17 @@ function SortableCourseRow({
           </button>
         )}
       </TableCell>
-      <TableCell className="flex items-center gap-2">
-        {editingId === course.id ? (
-          <Input value={editName} onChange={e => onEditNameChange(e.target.value)} className="h-7 w-28" />
-        ) : (
-          <>
-            <span className="w-4 h-4 rounded" style={{ backgroundColor: course.colorCode }} />
-            {course.name}
-          </>
-        )}
+      <TableCell>
+        <div className="flex items-center gap-2">
+          {editingId === course.id ? (
+            <Input value={editName} onChange={e => onEditNameChange(e.target.value)} className="h-7 w-28" />
+          ) : (
+            <>
+              <span className="w-4 h-4 rounded" style={{ backgroundColor: course.colorCode }} />
+              {course.name}
+            </>
+          )}
+        </div>
       </TableCell>
       {editingId !== null && (
         <TableCell>
@@ -92,26 +94,28 @@ function SortableCourseRow({
             : null}
         </TableCell>
       )}
-      <TableCell className="flex gap-1">
-        {editingId === course.id ? (
-          <>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onSave(course.id)}>
-              <Check className="w-3.5 h-3.5" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onCancel}>
-              <X className="w-3.5 h-3.5" />
-            </Button>
-          </>
-        ) : (
-          <>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(course)}>
-              <Pencil className="w-3.5 h-3.5" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => onDelete(course.id)}>
-              <Trash2 className="w-3.5 h-3.5" />
-            </Button>
-          </>
-        )}
+      <TableCell className="w-24">
+        <div className="flex items-center gap-1">
+          {editingId === course.id ? (
+            <>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onSave(course.id)}>
+                <Check className="w-3.5 h-3.5" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onCancel}>
+                <X className="w-3.5 h-3.5" />
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(course)}>
+                <Pencil className="w-3.5 h-3.5" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => onDelete(course.id)}>
+                <Trash2 className="w-3.5 h-3.5" />
+              </Button>
+            </>
+          )}
+        </div>
       </TableCell>
     </TableRow>
   );
@@ -282,7 +286,7 @@ export function CourseTab() {
                     </TableHead>
                     <SortableTableHead columnKey="name" sortState={sortState} onToggleSort={toggleSort}>名稱</SortableTableHead>
                     {editingId !== null && <TableHead>顏色</TableHead>}
-                    <TableHead>操作</TableHead>
+                    <TableHead className="w-24">操作</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
