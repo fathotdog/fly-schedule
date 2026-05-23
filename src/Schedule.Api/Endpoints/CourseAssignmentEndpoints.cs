@@ -27,9 +27,9 @@ public static class CourseAssignmentEndpoints
             return Results.Ok(result);
         }).DisableAntiforgery();
 
-        group.MapGet("/", async (int semesterId, int? classId, int? teacherId, bool unassigned, CourseAssignmentService svc) =>
+        group.MapGet("/", async (int semesterId, int? classId, int? teacherId, bool? unassigned, CourseAssignmentService svc) =>
         {
-            return await svc.GetAssignmentsAsync(semesterId, classId, teacherId, unassigned);
+            return await svc.GetAssignmentsAsync(semesterId, classId, teacherId, unassigned ?? false);
         });
 
         group.MapPost("/", async (int semesterId, CreateCourseAssignmentRequest req, ScheduleDbContext db) =>

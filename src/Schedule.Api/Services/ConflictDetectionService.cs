@@ -11,6 +11,18 @@ public class ConflictDetectionService(ScheduleDbContext db)
     {
         var conflicts = new List<ConflictInfo>();
 
+        var period = await db.Periods.FindAsync(periodId);
+        if (period is null)
+        {
+            conflicts.Add(new ConflictInfo("NotFound", "找不到節次資料"));
+            return conflicts;
+        }
+        if (period.IsActivity)
+        {
+            conflicts.Add(new ConflictInfo("ActivityPeriod", "不可排課到活動節次（午休、朝會等）"));
+            return conflicts;
+        }
+
         var assignment = await db.CourseAssignments
             .Include(ca => ca.Teacher)
             .Include(ca => ca.Class)
@@ -51,6 +63,17 @@ public class ConflictDetectionService(ScheduleDbContext db)
             {
                 conflicts.Add(new ConflictInfo("TeacherConflict",
                     $"{assignment.Teacher!.Name}已在此時段教{teacherConflict.CourseAssignment.Class.DisplayName}{teacherConflict.CourseAssignment.Course.Name}"));
+            }
+
+            var unavailable = await db.TeacherUnavailabilities.AnyAsync(u =>
+                u.SemesterId == assignment.SemesterId &&
+                u.TeacherId == assignment.TeacherId.Value &&
+                u.DayOfWeek == dayOfWeek &&
+                u.PeriodId == periodId);
+
+            if (unavailable)
+            {
+                conflicts.Add(new ConflictInfo("TeacherUnavailable", "教師標記為不可排時段"));
             }
         }
 

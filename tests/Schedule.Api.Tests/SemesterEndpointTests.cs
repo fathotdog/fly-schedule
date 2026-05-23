@@ -150,6 +150,94 @@ public class SemesterEndpointTests : IClassFixture<WebApplicationFactory<Program
     }
 
     [Fact]
+    public async Task CreateSemester_WithSourceSemesterId_ClonesTimetableSlotsAndRoomBookings()
+    {
+        var client = CreateClient();
+
+        var srcResponse = await client.PostAsJsonAsync("/api/semesters", new
+        {
+            academicYear = 112,
+            term = 1,
+            startDate = "2023-09-01",
+            schoolName = "來源學校"
+        });
+        var src = await srcResponse.Content.ReadFromJsonAsync<SemesterDto>();
+        Assert.NotNull(src);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ScheduleDbContext>();
+            var schoolClass = new SchoolClass { SemesterId = src!.Id, GradeYear = 7, Section = 1, DisplayName = "七年一班" };
+            var teacher = new Teacher { Name = "王老師", StaffTitleId = 1, MaxWeeklyPeriods = 20 };
+            var course = new Course { Name = "國文", ColorCode = "#ef4444" };
+            var room = new SpecialRoom { Name = "音樂教室", Capacity = 30 };
+            db.AddRange(schoolClass, teacher, course, room);
+            await db.SaveChangesAsync();
+
+            var period = await db.Periods
+                .Where(p => p.SemesterId == src.Id && !p.IsActivity)
+                .OrderBy(p => p.PeriodNumber)
+                .FirstAsync();
+
+            var assignment = new CourseAssignment
+            {
+                SemesterId = src.Id,
+                CourseId = course.Id,
+                TeacherId = teacher.Id,
+                ClassId = schoolClass.Id,
+                WeeklyPeriods = 3
+            };
+            db.CourseAssignments.Add(assignment);
+            await db.SaveChangesAsync();
+
+            var slot = new TimetableSlot
+            {
+                CourseAssignmentId = assignment.Id,
+                DayOfWeek = 1,
+                PeriodId = period.Id,
+                IsLocked = true
+            };
+            db.TimetableSlots.Add(slot);
+            await db.SaveChangesAsync();
+
+            db.RoomBookings.Add(new RoomBooking
+            {
+                TimetableSlotId = slot.Id,
+                SpecialRoomId = room.Id
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var cloneResponse = await client.PostAsJsonAsync("/api/semesters", new
+        {
+            academicYear = 112,
+            term = 2,
+            startDate = "2024-02-01",
+            sourceSemesterId = src!.Id
+        });
+
+        Assert.Equal(HttpStatusCode.Created, cloneResponse.StatusCode);
+        var clone = await cloneResponse.Content.ReadFromJsonAsync<SemesterDto>();
+        Assert.NotNull(clone);
+
+        using var verifyScope = _factory.Services.CreateScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<ScheduleDbContext>();
+        var clonedSlot = await verifyDb.TimetableSlots
+            .Include(ts => ts.CourseAssignment)
+            .FirstOrDefaultAsync(ts => ts.CourseAssignment.SemesterId == clone!.Id);
+        Assert.NotNull(clonedSlot);
+        Assert.True(clonedSlot!.IsLocked);
+        Assert.Equal(1, clonedSlot.DayOfWeek);
+
+        var clonedBooking = await verifyDb.RoomBookings
+            .Include(rb => rb.TimetableSlot)
+            .ThenInclude(ts => ts.CourseAssignment)
+            .FirstOrDefaultAsync(rb => rb.TimetableSlot.CourseAssignment.SemesterId == clone.Id);
+        Assert.NotNull(clonedBooking);
+        Assert.Equal(clonedSlot.Id, clonedBooking!.TimetableSlotId);
+    }
+
+    [Fact]
     public async Task CreateSemester_InvalidSourceSemesterId_ReturnsBadRequest()
     {
         var client = CreateClient();

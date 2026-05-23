@@ -6,9 +6,16 @@ import { TimetableGrid } from './TimetableGrid';
 import { TeacherSchedulePanel } from './TeacherSchedulePanel';
 import { ClassSchedulePanel } from './ClassSchedulePanel';
 import { Button } from '@/components/ui/button';
-import { Download, GraduationCap, User } from 'lucide-react';
+import { Download, FileSpreadsheet, GraduationCap, User } from 'lucide-react';
 import { useScheduleStore } from '@/store/useScheduleStore';
-import { exportTimetablePdf, exportTeacherTimetablePdf } from '@/api/client';
+import {
+  exportAllClassTimetablesExcel,
+  exportAllClassTimetablesPdf,
+  exportAllTeacherTimetablesExcel,
+  exportAllTeacherTimetablesPdf,
+  exportTimetablePdf,
+  exportTeacherTimetablePdf,
+} from '@/api/client';
 import { cn } from '@/lib/utils';
 
 export function TimetablePage() {
@@ -22,6 +29,24 @@ export function TimetablePage() {
       exportTimetablePdf(currentSemesterId, selectedClassId);
     } else if (!isClassMode && selectedTeacherId) {
       exportTeacherTimetablePdf(currentSemesterId, selectedTeacherId);
+    }
+  };
+
+  const handleBatchExportPdf = () => {
+    if (!currentSemesterId) return;
+    if (isClassMode) {
+      exportAllClassTimetablesPdf(currentSemesterId);
+    } else {
+      exportAllTeacherTimetablesPdf(currentSemesterId);
+    }
+  };
+
+  const handleBatchExportExcel = () => {
+    if (!currentSemesterId) return;
+    if (isClassMode) {
+      exportAllClassTimetablesExcel(currentSemesterId);
+    } else {
+      exportAllTeacherTimetablesExcel(currentSemesterId);
     }
   };
 
@@ -69,6 +94,24 @@ export function TimetablePage() {
             title="匯出 PDF"
           >
             <Download className="w-4 h-4" />
+          </Button>
+        </div>
+        <div className="mb-4 grid grid-cols-2 gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleBatchExportPdf}
+            disabled={!currentSemesterId}
+          >
+            <Download className="mr-1 h-4 w-4" /> 批次 PDF
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleBatchExportExcel}
+            disabled={!currentSemesterId}
+          >
+            <FileSpreadsheet className="mr-1 h-4 w-4" /> Excel
           </Button>
         </div>
         <SubjectSelector />

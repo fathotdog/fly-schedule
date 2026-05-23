@@ -56,6 +56,34 @@ public static class TimetableEndpoints
             return Results.BadRequest(new { message = "classId or teacherId is required" });
         });
 
+        group.MapGet("/export-pdf/all/classes", async (int semesterId, TimetablePdfService pdfService) =>
+        {
+            var pdfBytes = await pdfService.GenerateAllClassTimetablesPdfAsync(semesterId);
+            return Results.File(pdfBytes, "application/pdf", "全部班級課表.pdf");
+        });
+
+        group.MapGet("/export-pdf/all/teachers", async (int semesterId, TimetablePdfService pdfService) =>
+        {
+            var pdfBytes = await pdfService.GenerateAllTeacherTimetablesPdfAsync(semesterId);
+            return Results.File(pdfBytes, "application/pdf", "全部教師課表.pdf");
+        });
+
+        group.MapGet("/export-excel/all/classes", async (int semesterId, ExcelService excelService) =>
+        {
+            var bytes = await excelService.ExportAllClassTimetablesAsync(semesterId);
+            return Results.File(bytes,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "全部班級課表.xlsx");
+        });
+
+        group.MapGet("/export-excel/all/teachers", async (int semesterId, ExcelService excelService) =>
+        {
+            var bytes = await excelService.ExportAllTeacherTimetablesAsync(semesterId);
+            return Results.File(bytes,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "全部教師課表.xlsx");
+        });
+
         group.MapGet("/export-pdf/room/{roomId:int}", async (int semesterId, int roomId, TimetablePdfService pdfService) =>
         {
             var pdfBytes = await pdfService.GenerateRoomTimetablePdfAsync(semesterId, roomId);

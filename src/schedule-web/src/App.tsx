@@ -45,7 +45,16 @@ function AppContent() {
     const data = await setCurrentSemester(id);
     const name = `${data.academicYear}年 第${data.term}學期`;
     setCurrentSemesterId(data.id, name);
-    qc.invalidateQueries();
+
+    const semesterKeys = [
+      'timetable', 'periods', 'classes', 'schoolDays',
+      'courseAssignments', 'homerooms', 'dashboard',
+      'teacherSchedule', 'semesters', 'teacherAvailability',
+    ];
+
+    await Promise.all(
+      semesterKeys.map(key => qc.invalidateQueries({ queryKey: [key] }))
+    );
   }
 
   const isTimetable = activeTab === 'timetable';

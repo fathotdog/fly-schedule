@@ -10,4 +10,5 @@ public class Teacher
     public StaffTitle StaffTitle { get; set; } = null!;
     public ICollection<CourseAssignment> CourseAssignments { get; set; } = [];
     public ICollection<HomeroomAssignment> HomeroomAssignments { get; set; } = [];
+    public ICollection<TeacherUnavailability> Unavailabilities { get; set; } = [];
 }

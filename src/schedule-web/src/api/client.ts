@@ -1,6 +1,7 @@
 import axios from 'axios';
 import type {
   Semester, SchoolClass, SchoolDay, StaffTitle, Teacher,
+  TeacherUnavailabilityDto,
   Course, CourseAssignment, Period, HomeroomAssignment,
   SpecialRoom, TimetableSlot, TimetableGridResponse,
   TeacherScheduleResponse, ConflictInfo, ImportResult,
@@ -69,6 +70,10 @@ export const createTeacher = (data: { name: string; staffTitleId: number; maxWee
 export const updateTeacher = (id: number, data: { name: string; staffTitleId: number; maxWeeklyPeriods: number }) =>
   api.put<Teacher>(`/teachers/${id}`, data).then(r => r.data);
 export const deleteTeacher = (id: number) => api.delete(`/teachers/${id}`);
+export const getTeacherAvailability = (semesterId: number, teacherId: number) =>
+  api.get<TeacherUnavailabilityDto[]>(`/semesters/${semesterId}/teachers/${teacherId}/availability`).then(r => r.data);
+export const updateTeacherAvailability = (semesterId: number, teacherId: number, slots: { dayOfWeek: number; periodId: number }[]) =>
+  api.put<TeacherUnavailabilityDto[]>(`/semesters/${semesterId}/teachers/${teacherId}/availability`, slots).then(r => r.data);
 
 export const exportTeachersExcel = () => downloadBlob('/teachers/export-excel', '教師.xlsx');
 
@@ -185,6 +190,18 @@ export const exportTimetablePdf = (semesterId: number, classId: number) =>
 
 export const exportTeacherTimetablePdf = (semesterId: number, teacherId: number) =>
   downloadBlob(`/semesters/${semesterId}/timetable/export-pdf`, '教師課表.pdf', { teacherId });
+
+export const exportAllClassTimetablesPdf = (semesterId: number) =>
+  downloadBlob(`/semesters/${semesterId}/timetable/export-pdf/all/classes`, '全部班級課表.pdf');
+
+export const exportAllTeacherTimetablesPdf = (semesterId: number) =>
+  downloadBlob(`/semesters/${semesterId}/timetable/export-pdf/all/teachers`, '全部教師課表.pdf');
+
+export const exportAllClassTimetablesExcel = (semesterId: number) =>
+  downloadBlob(`/semesters/${semesterId}/timetable/export-excel/all/classes`, '全部班級課表.xlsx');
+
+export const exportAllTeacherTimetablesExcel = (semesterId: number) =>
+  downloadBlob(`/semesters/${semesterId}/timetable/export-excel/all/teachers`, '全部教師課表.xlsx');
 
 export const getRoomTimetable = (semesterId: number, roomId: number) =>
   api.get<TimetableSlot[]>(`/semesters/${semesterId}/timetable/room/${roomId}`).then(r => r.data);

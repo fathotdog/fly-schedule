@@ -35,6 +35,13 @@ export interface Teacher {
   maxWeeklyPeriods: number;
 }
 
+export interface TeacherUnavailabilityDto {
+  semesterId: number;
+  teacherId: number;
+  dayOfWeek: number;
+  periodId: number;
+}
+
 export interface Course {
   id: number;
   name: string;

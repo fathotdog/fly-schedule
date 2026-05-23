@@ -42,8 +42,11 @@ export const DAY_NAMES = ['週一', '週二', '週三', '週四', '週五'] as c
 /** DAY_NAMES with a leading empty string so index matches dayOfWeek (1-based) */
 export const DAY_NAMES_1BASED = ['', '週一', '週二', '週三', '週四', '週五'] as const;
 
-/** dayOfWeek values for Mon–Fri (1-based) */
-export const SCHOOL_DAYS = [1, 2, 3, 4, 5] as const;
+export const SCHOOL_DAYS = DAY_NAMES.map((_, index) => (index + 1) as 1 | 2 | 3 | 4 | 5);
+
+export function getDayName(dayOfWeek: number) {
+  return DAY_NAMES_1BASED[dayOfWeek] ?? `週${dayOfWeek}`;
+}
 
 /** Stable empty array sentinel — use as default for query data to avoid recreating arrays on every render */
 export const EMPTY_ARR: never[] = [];

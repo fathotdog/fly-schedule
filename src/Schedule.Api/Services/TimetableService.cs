@@ -189,24 +189,48 @@ public class TimetableService(ScheduleDbContext db, ConflictDetectionService con
         var (origDay1, origPeriod1) = (slot1!.DayOfWeek, slot1.PeriodId);
         var (origDay2, origPeriod2) = (slot2!.DayOfWeek, slot2.PeriodId);
 
-        if (slot1.CourseAssignmentId == slot2.CourseAssignmentId)
-        {
-            // Same CA: two-phase swap to avoid unique constraint violation
-            // (SQLite checks per-statement; direct swap would temporarily duplicate a row)
-            slot1.DayOfWeek = -1;
-            await db.SaveChangesAsync();
+        var tx = db.Database.IsRelational()
+            ? await db.Database.BeginTransactionAsync()
+            : null;
 
-            slot1.DayOfWeek = origDay2;
-            slot1.PeriodId = origPeriod2;
-            slot2.DayOfWeek = origDay1;
-            slot2.PeriodId = origPeriod1;
-            await db.SaveChangesAsync();
-        }
-        else
+        try
         {
-            (slot1.DayOfWeek, slot2.DayOfWeek) = (origDay2, origDay1);
-            (slot1.PeriodId, slot2.PeriodId) = (origPeriod2, origPeriod1);
-            await db.SaveChangesAsync();
+            if (slot1.CourseAssignmentId == slot2.CourseAssignmentId && db.Database.IsRelational())
+            {
+                // Same CA on a relational provider: two-phase swap to avoid the unique-index
+                // violation on (CourseAssignmentId, DayOfWeek, PeriodId), which SQLite enforces
+                // per-statement. Sentinel = -slot1.Id is per-row unique so concurrent swaps on
+                // different rows can't collide on the sentinel value.
+                slot1.DayOfWeek = -slot1.Id;
+                await db.SaveChangesAsync();
+
+                slot1.DayOfWeek = origDay2;
+                slot1.PeriodId = origPeriod2;
+                slot2.DayOfWeek = origDay1;
+                slot2.PeriodId = origPeriod1;
+                await db.SaveChangesAsync();
+            }
+            else
+            {
+                // Different CA, or InMemory (no unique-index enforcement): single SaveChanges is safe.
+                (slot1.DayOfWeek, slot2.DayOfWeek) = (origDay2, origDay1);
+                (slot1.PeriodId, slot2.PeriodId) = (origPeriod2, origPeriod1);
+                await db.SaveChangesAsync();
+            }
+
+            if (tx is not null)
+                await tx.CommitAsync();
+        }
+        catch
+        {
+            if (tx is not null)
+                await tx.RollbackAsync();
+            throw;
+        }
+        finally
+        {
+            if (tx is not null)
+                await tx.DisposeAsync();
         }
 
         var reloaded = await SlotWithFullIncludes()
@@ -238,12 +262,20 @@ public class TimetableService(ScheduleDbContext db, ConflictDetectionService con
     private async Task<List<ConflictInfo>> CheckSwapConflictsForSlots(TimetableSlot slot1, TimetableSlot slot2)
     {
         var excludeIds = new[] { slot1.Id, slot2.Id };
-        var t1 = conflictService.CheckConflictsAsync(slot1.CourseAssignmentId, slot2.DayOfWeek, slot2.PeriodId,
-            slot1.RoomBooking?.SpecialRoomId, excludeSlotIds: excludeIds);
-        var t2 = conflictService.CheckConflictsAsync(slot2.CourseAssignmentId, slot1.DayOfWeek, slot1.PeriodId,
-            slot2.RoomBooking?.SpecialRoomId, excludeSlotIds: excludeIds);
-        await Task.WhenAll(t1, t2);
-        return t1.Result.Concat(t2.Result).ToList();
+        var conflicts1 = await conflictService.CheckConflictsAsync(
+            slot1.CourseAssignmentId,
+            slot2.DayOfWeek,
+            slot2.PeriodId,
+            slot1.RoomBooking?.SpecialRoomId,
+            excludeSlotIds: excludeIds);
+        var conflicts2 = await conflictService.CheckConflictsAsync(
+            slot2.CourseAssignmentId,
+            slot1.DayOfWeek,
+            slot1.PeriodId,
+            slot2.RoomBooking?.SpecialRoomId,
+            excludeSlotIds: excludeIds);
+
+        return conflicts1.Concat(conflicts2).ToList();
     }
 
     public async Task<TimetableSlotDto?> ToggleLockAsync(int slotId, bool isLocked)

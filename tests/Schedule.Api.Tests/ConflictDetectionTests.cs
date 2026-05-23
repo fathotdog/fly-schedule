@@ -129,4 +129,77 @@ public class ConflictDetectionTests
 
         Assert.Contains(conflicts, c => c.Type == "RoomConflict");
     }
+
+    [Fact]
+    public async Task DetectsActivityPeriodConflict()
+    {
+        var (db, ca1, _, period) = await SetupScenario();
+        period.IsActivity = true;
+        await db.SaveChangesAsync();
+
+        var svc = new ConflictDetectionService(db);
+
+        var conflicts = await svc.CheckConflictsAsync(ca1.Id, 1, period.Id, null);
+
+        Assert.Contains(conflicts, c => c.Type == "ActivityPeriod");
+    }
+
+    [Fact]
+    public async Task DetectsTeacherUnavailableConflict()
+    {
+        var (db, _, ca2, period) = await SetupScenario();
+
+        db.TeacherUnavailabilities.Add(new TeacherUnavailability
+        {
+            SemesterId = ca2.SemesterId,
+            TeacherId = ca2.TeacherId!.Value,
+            DayOfWeek = 1,
+            PeriodId = period.Id
+        });
+        await db.SaveChangesAsync();
+
+        var svc = new ConflictDetectionService(db);
+
+        var conflicts = await svc.CheckConflictsAsync(ca2.Id, 1, period.Id, null);
+
+        Assert.Contains(conflicts, c => c.Type == "TeacherUnavailable");
+    }
+
+    [Fact]
+    public async Task DoesNotMatchUnavailabilityFromAnotherSemester()
+    {
+        var (db, _, ca2, period) = await SetupScenario();
+
+        // Create a second semester and seed an unavailability against the OTHER semester
+        var otherSemester = new Semester { AcademicYear = 115, Term = 1, StartDate = new DateOnly(2026, 9, 1) };
+        db.Semesters.Add(otherSemester);
+        await db.SaveChangesAsync();
+
+        db.TeacherUnavailabilities.Add(new TeacherUnavailability
+        {
+            SemesterId = otherSemester.Id,
+            TeacherId = ca2.TeacherId!.Value,
+            DayOfWeek = 1,
+            PeriodId = period.Id
+        });
+        await db.SaveChangesAsync();
+
+        var svc = new ConflictDetectionService(db);
+
+        // ca2 lives in ca2.SemesterId — the unavailability from otherSemester must not match
+        var conflicts = await svc.CheckConflictsAsync(ca2.Id, 1, period.Id, null);
+
+        Assert.DoesNotContain(conflicts, c => c.Type == "TeacherUnavailable");
+    }
+
+    [Fact]
+    public async Task ReportsNotFoundForUnknownPeriod()
+    {
+        var (db, ca1, _, _) = await SetupScenario();
+        var svc = new ConflictDetectionService(db);
+
+        var conflicts = await svc.CheckConflictsAsync(ca1.Id, 1, periodId: 999_999, null);
+
+        Assert.Contains(conflicts, c => c.Type == "NotFound");
+    }
 }

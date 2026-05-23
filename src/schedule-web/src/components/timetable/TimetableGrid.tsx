@@ -1,10 +1,10 @@
-import { useState, useRef, useEffect } from 'react';
+import { memo, useMemo, useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getTimetable, getPeriods, createTimetableSlot, deleteTimetableSlot, moveTimetableSlot, swapTimetableSlots, checkConflicts, checkSwapConflicts, toggleSlotLock } from '@/api/client';
+import { getTimetable, getPeriods, getSchoolDays, createTimetableSlot, deleteTimetableSlot, moveTimetableSlot, swapTimetableSlots, checkConflicts, checkSwapConflicts, toggleSlotLock, getTeacherAvailability, getRoomTimetable } from '@/api/client';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { Plus, Minus, LayoutGrid, GripVertical, User, AlertTriangle, Lock, LockOpen } from 'lucide-react';
-import type { TimetableSlot, ConflictInfo } from '@/api/types';
-import { DAY_NAMES, SCHOOL_DAYS } from '@/lib/constants';
+import type { TimetableSlot, ConflictInfo, TimetableGridResponse } from '@/api/types';
+import { DAY_NAMES, getDayName } from '@/lib/constants';
 import { cellKey, handleConflictError, invalidateTimetableQueries, makeSlotMap } from '@/lib/timetable';
 import { cn } from '@/lib/utils';
 import { useConflictWarnings } from '@/hooks/useConflictWarnings';
@@ -58,7 +58,61 @@ export function TimetableGrid() {
     enabled: !!currentSemesterId,
   });
 
+  const { data: schoolDays = [] } = useQuery({
+    queryKey: ['schoolDays', currentSemesterId],
+    queryFn: () => getSchoolDays(currentSemesterId!),
+    enabled: !!currentSemesterId,
+  });
+
+  const { data: unavailabilities = [] } = useQuery({
+    queryKey: ['teacherAvailability', currentSemesterId, activeId],
+    queryFn: () => getTeacherAvailability(currentSemesterId!, activeId!),
+    enabled: !isClassMode && !!currentSemesterId && !!activeId,
+  });
+
+  const { data: roomBookedSlots = [] } = useQuery({
+    queryKey: ['roomTimetable', currentSemesterId, selectedSpecialRoomId],
+    queryFn: () => getRoomTimetable(currentSemesterId!, selectedSpecialRoomId!),
+    enabled: !!currentSemesterId && selectedSpecialRoomId != null,
+  });
+
   const { warnings, warningMessage } = useConflictWarnings(data?.courseAssignments);
+  const periodNumbers = useMemo(
+    () => new Map(periods.map(period => [period.id, period.periodNumber])),
+    [periods]
+  );
+  const activeSchoolDays = useMemo(() => {
+    const activeDays = schoolDays
+      .filter(day => day.isActive)
+      .sort((a, b) => a.dayOfWeek - b.dayOfWeek)
+      .map(day => day.dayOfWeek);
+
+    return activeDays.length > 0
+      ? activeDays
+      : DAY_NAMES.map((_, index) => index + 1);
+  }, [schoolDays]);
+  const unavailabilityKeys = useMemo(
+    () => new Set(unavailabilities.map(item => cellKey(item.dayOfWeek, item.periodId))),
+    [unavailabilities]
+  );
+
+  // Map of cellKey -> slot info for booked room slots (excluding current view's own slots)
+  const roomBookedMap = useMemo(() => {
+    const map = new Map<string, { courseName: string; classDisplayName: string }>();
+    for (const s of roomBookedSlots) {
+      const key = cellKey(s.dayOfWeek, s.periodId);
+      // skip if this slot belongs to the currently viewed class/teacher (it's already visible)
+      const isOwnSlot = isClassMode ? s.classId === activeId : s.teacherId === activeId;
+      if (!isOwnSlot) {
+        map.set(key, { courseName: s.courseName, classDisplayName: s.classDisplayName ?? '' });
+      }
+    }
+    return map;
+  }, [roomBookedSlots, isClassMode, activeId]);
+
+  const applyOptimisticTimetableUpdate = (updater: (current: TimetableGridResponse) => TimetableGridResponse) => {
+    qc.setQueryData<TimetableGridResponse>(queryKey, current => current ? updater(current) : current);
+  };
 
   const addMut = useMutation({
     mutationFn: (params: { dayOfWeek: number; periodId: number }) =>
@@ -87,14 +141,82 @@ export function TimetableGrid() {
   const moveMut = useMutation({
     mutationFn: (params: { slotId: number; dayOfWeek: number; periodId: number }) =>
       moveTimetableSlot(params.slotId, { dayOfWeek: params.dayOfWeek, periodId: params.periodId }),
-    onSuccess: () => invalidateTimetableQueries(qc),
-    onError: (err) => handleConflictError(err, '移動排課失敗'),
+    onMutate: async (vars) => {
+      await qc.cancelQueries({ queryKey });
+      const snapshot = qc.getQueryData<TimetableGridResponse>(queryKey);
+
+      applyOptimisticTimetableUpdate(current => ({
+        ...current,
+        slots: current.slots.map(slot => slot.id === vars.slotId
+          ? {
+            ...slot,
+            dayOfWeek: vars.dayOfWeek,
+            periodId: vars.periodId,
+            periodNumber: periodNumbers.get(vars.periodId) ?? slot.periodNumber,
+          }
+          : slot),
+      }));
+
+      return { snapshot };
+    },
+    onError: (err, _vars, ctx) => {
+      if (ctx?.snapshot) {
+        qc.setQueryData(queryKey, ctx.snapshot);
+      }
+      handleConflictError(err, '移動排課失敗');
+    },
+    onSettled: () => invalidateTimetableQueries(qc),
   });
 
   const swapMut = useMutation({
     mutationFn: (params: { slotId1: number; slotId2: number }) => swapTimetableSlots(params),
-    onSuccess: () => invalidateTimetableQueries(qc),
-    onError: (err) => handleConflictError(err, '交換排課失敗'),
+    onMutate: async (vars) => {
+      await qc.cancelQueries({ queryKey });
+      const snapshot = qc.getQueryData<TimetableGridResponse>(queryKey);
+
+      applyOptimisticTimetableUpdate(current => {
+        const slot1 = current.slots.find(slot => slot.id === vars.slotId1);
+        const slot2 = current.slots.find(slot => slot.id === vars.slotId2);
+
+        if (!slot1 || !slot2) {
+          return current;
+        }
+
+        return {
+          ...current,
+          slots: current.slots.map(slot => {
+            if (slot.id === slot1.id) {
+              return {
+                ...slot,
+                dayOfWeek: slot2.dayOfWeek,
+                periodId: slot2.periodId,
+                periodNumber: slot2.periodNumber,
+              };
+            }
+
+            if (slot.id === slot2.id) {
+              return {
+                ...slot,
+                dayOfWeek: slot1.dayOfWeek,
+                periodId: slot1.periodId,
+                periodNumber: slot1.periodNumber,
+              };
+            }
+
+            return slot;
+          }),
+        };
+      });
+
+      return { snapshot };
+    },
+    onError: (err, _vars, ctx) => {
+      if (ctx?.snapshot) {
+        qc.setQueryData(queryKey, ctx.snapshot);
+      }
+      handleConflictError(err, '交換排課失敗');
+    },
+    onSettled: () => invalidateTimetableQueries(qc),
   });
 
   const lockMut = useMutation({
@@ -159,8 +281,8 @@ export function TimetableGrid() {
         <thead>
           <tr>
             <th className="p-2 bg-surface-container-low text-primary rounded-lg w-16 text-xs font-bold uppercase tracking-widest">節次</th>
-            {DAY_NAMES.map((name, i) => (
-              <th key={i} className="p-2 bg-surface-container-low text-primary rounded-lg min-w-[140px] text-xs font-bold uppercase tracking-widest">{name}</th>
+            {activeSchoolDays.map(day => (
+              <th key={day} className="p-2 bg-surface-container-low text-primary rounded-lg min-w-[140px] text-xs font-bold uppercase tracking-widest">{getDayName(day)}</th>
             ))}
           </tr>
         </thead>
@@ -171,7 +293,7 @@ export function TimetableGrid() {
                 <div className="text-primary text-sm">{period.periodNumber}</div>
                 <div className="text-xs text-on-surface-variant">{period.startTime?.substring(0, 5)}</div>
               </td>
-              {SCHOOL_DAYS.map(day => {
+              {activeSchoolDays.map(day => {
                 const slot = getSlot(day, period.id);
                 const key = cellKey(day, period.id);
                 const isDropTarget = dragOverCell === key && !!draggedSlot && (!slot || slot.id !== draggedSlot.id);
@@ -179,11 +301,16 @@ export function TimetableGrid() {
                 const isDropTargetSwap = !!slot && isDropTarget;
                 const hasConflict = conflictCellKey === key && !!dragConflicts && dragConflicts.length > 0;
                 const hasCellWarning = !slot && !!selectedCourseAssignmentId && !draggedSlot && warnings.has(key);
+                const isUnavailable = !isClassMode && unavailabilityKeys.has(key);
+                const roomBooked = roomBookedMap.get(key);
+                const isRoomBooked = !slot && !!roomBooked;
                 return (
                   <td
                     key={day}
                     className={cn(
                       'p-0 h-20 relative rounded-lg border border-outline-variant/15 hover:border-primary/30 transition-shadow',
+                      isUnavailable && !slot && 'bg-gray-200/70 cursor-not-allowed',
+                      isRoomBooked && 'bg-orange-100/60 cursor-not-allowed',
                       isDropTargetEmpty && !hasConflict && 'border-primary/50 bg-primary/5 ring-2 ring-primary/30',
                       isDropTargetSwap && !hasConflict && 'border-amber-500/50 bg-amber-50/50 ring-2 ring-amber-500/30',
                       hasConflict && isDropTarget && 'border-red-500/50 bg-red-50/50 ring-2 ring-red-500/30',
@@ -262,10 +389,13 @@ export function TimetableGrid() {
                       />
                     ) : (
                       <EmptyCell
-                        canAdd={!!selectedCourseAssignmentId && !draggedSlot}
+                        canAdd={!!selectedCourseAssignmentId && !draggedSlot && !isRoomBooked && !isUnavailable}
                         onAdd={() => addMut.mutate({ dayOfWeek: day, periodId: period.id })}
                         hasWarning={hasCellWarning}
                         warningMessage={warningMessage}
+                        isUnavailable={isUnavailable}
+                        isRoomBooked={isRoomBooked}
+                        roomBookedInfo={roomBooked}
                       />
                     )}
                   </td>
@@ -279,7 +409,7 @@ export function TimetableGrid() {
   );
 }
 
-function SlotCell({ slot, isClassMode, isDragging, onRemove, onToggleLock, onSecondaryClick, onDragStart, onDragEnd }: {
+const SlotCell = memo(function SlotCell({ slot, isClassMode, isDragging, onRemove, onToggleLock, onSecondaryClick, onDragStart, onDragEnd }: {
   slot: TimetableSlot;
   isClassMode: boolean;
   isDragging: boolean;
@@ -344,20 +474,53 @@ function SlotCell({ slot, isClassMode, isDragging, onRemove, onToggleLock, onSec
       </div>
     </div>
   );
-}
+}, (prev, next) =>
+  prev.slot.id === next.slot.id &&
+  prev.slot.isLocked === next.slot.isLocked &&
+  prev.slot.courseName === next.slot.courseName &&
+  prev.slot.courseColorCode === next.slot.courseColorCode &&
+  prev.slot.teacherName === next.slot.teacherName &&
+  prev.slot.teacherId === next.slot.teacherId &&
+  prev.slot.classDisplayName === next.slot.classDisplayName &&
+  prev.slot.classId === next.slot.classId &&
+  prev.slot.specialRoomName === next.slot.specialRoomName &&
+  prev.slot.specialRoomId === next.slot.specialRoomId &&
+  prev.isClassMode === next.isClassMode &&
+  prev.isDragging === next.isDragging
+);
 
-function EmptyCell({ canAdd, onAdd, hasWarning, warningMessage }: {
-  canAdd: boolean; onAdd: () => void; hasWarning?: boolean; warningMessage?: string;
+const EmptyCell = memo(function EmptyCell({ canAdd, onAdd, hasWarning, warningMessage, isUnavailable, isRoomBooked, roomBookedInfo }: {
+  canAdd: boolean;
+  onAdd: () => void;
+  hasWarning?: boolean;
+  warningMessage?: string;
+  isUnavailable?: boolean;
+  isRoomBooked?: boolean;
+  roomBookedInfo?: { courseName: string; classDisplayName: string };
 }) {
+  if (isRoomBooked) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center gap-0.5 cursor-not-allowed" title={roomBookedInfo ? `${roomBookedInfo.classDisplayName} ${roomBookedInfo.courseName} 已佔用此教室` : '專科教室此時段已被佔用'}>
+        <AlertTriangle className="w-3.5 h-3.5 text-orange-400/70" />
+        {roomBookedInfo && (
+          <div className="text-[10px] text-orange-500/80 text-center leading-tight px-1">
+            <div>{roomBookedInfo.classDisplayName}</div>
+            <div>{roomBookedInfo.courseName}</div>
+          </div>
+        )}
+      </div>
+    );
+  }
   if (!canAdd) return <div className="h-full" />;
   return (
     <div
       className={cn(
         'h-full flex items-center justify-center cursor-pointer rounded-xl group',
+        isUnavailable && 'bg-gray-200/40',
         hasWarning ? 'hover:bg-amber-500/10' : 'hover:bg-primary/5',
       )}
       onClick={onAdd}
-      title={hasWarning ? warningMessage : '點擊排入此節次'}
+      title={isUnavailable ? '教師標記為不可排時段' : hasWarning ? warningMessage : '點擊排入此節次'}
     >
       {hasWarning ? (
         <>
@@ -369,4 +532,15 @@ function EmptyCell({ canAdd, onAdd, hasWarning, warningMessage }: {
       )}
     </div>
   );
-}
+}, (prev, next) =>
+  prev.canAdd === next.canAdd &&
+  prev.hasWarning === next.hasWarning &&
+  prev.warningMessage === next.warningMessage &&
+  prev.isUnavailable === next.isUnavailable &&
+  prev.isRoomBooked === next.isRoomBooked &&
+  prev.roomBookedInfo?.courseName === next.roomBookedInfo?.courseName &&
+  prev.roomBookedInfo?.classDisplayName === next.roomBookedInfo?.classDisplayName
+);
+
+SlotCell.displayName = 'SlotCell';
+EmptyCell.displayName = 'EmptyCell';

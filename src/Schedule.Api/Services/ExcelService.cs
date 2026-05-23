@@ -249,8 +249,14 @@ public class ExcelService(ScheduleDbContext db)
                 continue;
             }
 
+            // Distinguish rows already persisted (DB-tracked) from rows we created earlier in THIS import loop.
+            // For unassigned-teacher rows, only the persisted ones should be merged — otherwise a second row
+            // with the same (class, course, null teacher) would be silently folded into the first and lost.
             var existing = existingAssignments.FirstOrDefault(ca =>
-                ca.CourseId == course.Id && ca.ClassId == schoolClass.Id && ca.TeacherId == teacher?.Id);
+                ca.CourseId == course.Id
+                && ca.ClassId == schoolClass.Id
+                && ca.TeacherId == teacher?.Id
+                && db.Entry(ca).State != EntityState.Added);
 
             if (existing is not null)
             {
@@ -277,4 +283,236 @@ public class ExcelService(ScheduleDbContext db)
         await db.SaveChangesAsync();
         return new ImportResult(created, updated, skipped);
     }
+
+    public async Task<byte[]> ExportAllClassTimetablesAsync(int semesterId)
+    {
+        var semester = await db.Semesters.FindAsync(semesterId)
+            ?? throw new InvalidOperationException("Semester not found");
+
+        var periods = await LoadPeriodsAsync(semesterId);
+        var activeDays = await LoadActiveSchoolDaysAsync(semesterId);
+        var classes = await db.SchoolClasses
+            .Where(c => c.SemesterId == semesterId)
+            .OrderBy(c => c.GradeYear)
+            .ThenBy(c => c.Section)
+            .ToListAsync();
+
+        var slots = await db.TimetableSlots
+            .Include(ts => ts.CourseAssignment).ThenInclude(ca => ca.Course)
+            .Include(ts => ts.CourseAssignment).ThenInclude(ca => ca.Teacher)
+            .Include(ts => ts.Period)
+            .Where(ts => ts.CourseAssignment.SemesterId == semesterId)
+            .ToListAsync();
+
+        using var workbook = new XLWorkbook();
+
+        foreach (var schoolClass in classes)
+        {
+            var worksheet = workbook.Worksheets.Add(GetUniqueWorksheetName(workbook, schoolClass.DisplayName));
+            var slotLookup = slots
+                .Where(slot => slot.CourseAssignment.ClassId == schoolClass.Id)
+                .ToDictionary(slot => (slot.DayOfWeek, slot.PeriodId));
+
+            FillTimetableWorksheet(
+                worksheet,
+                $"{semester.SchoolName}{semester.AcademicYear}學年度第{semester.Term}學期班級課表",
+                $"班級：{schoolClass.DisplayName}",
+                periods,
+                activeDays,
+                slotLookup,
+                slot => slot.CourseAssignment.Teacher is null
+                    ? slot.CourseAssignment.Course.Name
+                    : $"{slot.CourseAssignment.Course.Name}\n{slot.CourseAssignment.Teacher.Name}");
+        }
+
+        EnsureWorkbookHasSheet(workbook, "班級課表");
+        return SaveWorkbook(workbook);
+    }
+
+    public async Task<byte[]> ExportAllTeacherTimetablesAsync(int semesterId)
+    {
+        var semester = await db.Semesters.FindAsync(semesterId)
+            ?? throw new InvalidOperationException("Semester not found");
+
+        var periods = await LoadPeriodsAsync(semesterId);
+        var activeDays = await LoadActiveSchoolDaysAsync(semesterId);
+        var teachers = await db.Teachers
+            .OrderBy(t => t.Name)
+            .ToListAsync();
+
+        var slots = await db.TimetableSlots
+            .Include(ts => ts.CourseAssignment).ThenInclude(ca => ca.Course)
+            .Include(ts => ts.CourseAssignment).ThenInclude(ca => ca.Class)
+            .Include(ts => ts.Period)
+            .Where(ts => ts.CourseAssignment.SemesterId == semesterId && ts.CourseAssignment.TeacherId != null)
+            .ToListAsync();
+
+        using var workbook = new XLWorkbook();
+
+        foreach (var teacher in teachers)
+        {
+            var worksheet = workbook.Worksheets.Add(GetUniqueWorksheetName(workbook, teacher.Name));
+            var slotLookup = slots
+                .Where(slot => slot.CourseAssignment.TeacherId == teacher.Id)
+                .ToDictionary(slot => (slot.DayOfWeek, slot.PeriodId));
+
+            FillTimetableWorksheet(
+                worksheet,
+                $"{semester.SchoolName}{semester.AcademicYear}學年度第{semester.Term}學期教師課表",
+                $"教師：{teacher.Name}",
+                periods,
+                activeDays,
+                slotLookup,
+                slot => $"{slot.CourseAssignment.Course.Name}\n{slot.CourseAssignment.Class.DisplayName}");
+        }
+
+        EnsureWorkbookHasSheet(workbook, "教師課表");
+        return SaveWorkbook(workbook);
+    }
+
+    private Task<List<Period>> LoadPeriodsAsync(int semesterId) =>
+        db.Periods
+            .Where(period => period.SemesterId == semesterId)
+            .OrderBy(period => period.StartTime)
+            .ToListAsync();
+
+    private async Task<List<int>> LoadActiveSchoolDaysAsync(int semesterId)
+    {
+        var activeDays = await db.SchoolDays
+            .Where(day => day.SemesterId == semesterId && day.IsActive)
+            .OrderBy(day => day.DayOfWeek)
+            .Select(day => day.DayOfWeek)
+            .ToListAsync();
+
+        return activeDays.Count > 0 ? activeDays : [1, 2, 3, 4, 5];
+    }
+
+    private static void FillTimetableWorksheet(
+        IXLWorksheet worksheet,
+        string title,
+        string subtitle,
+        List<Period> periods,
+        List<int> activeDays,
+        Dictionary<(int DayOfWeek, int PeriodId), TimetableSlot> slotLookup,
+        Func<TimetableSlot, string> formatSlot)
+    {
+        var lastColumn = activeDays.Count + 2;
+
+        worksheet.Cell(1, 1).Value = title;
+        worksheet.Range(1, 1, 1, lastColumn).Merge();
+        worksheet.Cell(1, 1).Style.Font.Bold = true;
+        worksheet.Cell(1, 1).Style.Font.FontSize = 14;
+        worksheet.Cell(1, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+        worksheet.Cell(2, 1).Value = subtitle;
+        worksheet.Range(2, 1, 2, lastColumn).Merge();
+        worksheet.Cell(2, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+        worksheet.Cell(4, 1).Value = "時間";
+        worksheet.Cell(4, 2).Value = "節次";
+        for (var i = 0; i < activeDays.Count; i++)
+        {
+            worksheet.Cell(4, i + 3).Value = GetDayLabel(activeDays[i]);
+        }
+
+        worksheet.Range(4, 1, 4, lastColumn).Style.Font.Bold = true;
+        worksheet.Range(4, 1, 4, lastColumn).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        worksheet.Range(4, 1, 4, lastColumn).Style.Fill.BackgroundColor = XLColor.FromHtml("#e0e7ff");
+
+        var row = 5;
+        foreach (var period in periods)
+        {
+            worksheet.Cell(row, 1).Value = $"{period.StartTime:HH:mm}-{period.EndTime:HH:mm}";
+            worksheet.Cell(row, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            worksheet.Cell(row, 1).Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+
+            if (period.IsActivity)
+            {
+                worksheet.Cell(row, 2).Value = string.Empty;
+                worksheet.Range(row, 3, row, lastColumn).Merge();
+                worksheet.Cell(row, 3).Value = period.ActivityName ?? string.Empty;
+                worksheet.Range(row, 1, row, lastColumn).Style.Fill.BackgroundColor = XLColor.FromHtml("#eef2ff");
+            }
+            else
+            {
+                worksheet.Cell(row, 2).Value = period.PeriodNumber;
+                worksheet.Cell(row, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+                for (var i = 0; i < activeDays.Count; i++)
+                {
+                    var cell = worksheet.Cell(row, i + 3);
+                    if (slotLookup.TryGetValue((activeDays[i], period.Id), out var slot))
+                    {
+                        cell.Value = formatSlot(slot);
+                    }
+                }
+            }
+
+            worksheet.Range(row, 1, row, lastColumn).Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+            worksheet.Range(row, 1, row, lastColumn).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            worksheet.Range(row, 1, row, lastColumn).Style.Alignment.WrapText = true;
+            worksheet.Range(row, 1, row, lastColumn).Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+            worksheet.Range(row, 1, row, lastColumn).Style.Border.InsideBorder = XLBorderStyleValues.Thin;
+            worksheet.Row(row).Height = 42;
+            row++;
+        }
+
+        worksheet.Columns().AdjustToContents();
+        worksheet.Column(1).Width = 16;
+        worksheet.Column(2).Width = 8;
+        for (var i = 0; i < activeDays.Count; i++)
+        {
+            worksheet.Column(i + 3).Width = Math.Max(worksheet.Column(i + 3).Width, 16);
+        }
+    }
+
+    private static byte[] SaveWorkbook(XLWorkbook workbook)
+    {
+        using var ms = new MemoryStream();
+        workbook.SaveAs(ms);
+        return ms.ToArray();
+    }
+
+    private static void EnsureWorkbookHasSheet(XLWorkbook workbook, string sheetName)
+    {
+        if (workbook.Worksheets.Count > 0) return;
+
+        var worksheet = workbook.Worksheets.Add(sheetName);
+        worksheet.Cell(1, 1).Value = "無資料";
+    }
+
+    private static string GetUniqueWorksheetName(XLWorkbook workbook, string name)
+    {
+        var invalidChars = Path.GetInvalidFileNameChars().Concat(['[', ']', ':', '*', '?', '/', '\\']).Distinct().ToArray();
+        var sanitized = new string(name.Select(ch => invalidChars.Contains(ch) ? '_' : ch).ToArray()).Trim();
+        if (string.IsNullOrWhiteSpace(sanitized))
+        {
+            sanitized = "Sheet";
+        }
+
+        sanitized = sanitized.Length > 31 ? sanitized[..31] : sanitized;
+        var candidate = sanitized;
+        var suffix = 1;
+
+        while (workbook.Worksheets.Any(ws => ws.Name.Equals(candidate, StringComparison.OrdinalIgnoreCase)))
+        {
+            var suffixText = $"_{suffix++}";
+            var baseName = sanitized.Length > 31 - suffixText.Length
+                ? sanitized[..(31 - suffixText.Length)]
+                : sanitized;
+            candidate = $"{baseName}{suffixText}";
+        }
+
+        return candidate;
+    }
+
+    private static string GetDayLabel(int dayOfWeek) => dayOfWeek switch
+    {
+        1 => "週一",
+        2 => "週二",
+        3 => "週三",
+        4 => "週四",
+        5 => "週五",
+        _ => $"週{dayOfWeek}"
+    };
 }

@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableTableHead } from '@/components/ui/sortable-table-head';
+import { TeacherAvailabilityDialog } from '@/components/setup/TeacherAvailabilityDialog';
 import type { Teacher } from '@/api/types';
 
 export function TeacherTab() {
@@ -23,6 +24,7 @@ export function TeacherTab() {
   const [maxPeriods, setMaxPeriods] = useState(20);
   const [teacherToDelete, setTeacherToDelete] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [availabilityTeacher, setAvailabilityTeacher] = useState<Pick<Teacher, 'id' | 'name'> | null>(null);
   const [editName, setEditName] = useState('');
   const [editStaffTitleId, setEditStaffTitleId] = useState(1);
   const [editMaxPeriods, setEditMaxPeriods] = useState(20);
@@ -271,6 +273,15 @@ export function TeacherTab() {
                           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEdit(t)}>
                             <Pencil className="w-3.5 h-3.5" />
                           </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2"
+                            disabled={currentSemesterId === null}
+                            onClick={() => setAvailabilityTeacher({ id: t.id, name: t.name })}
+                          >
+                            <Clock className="w-3.5 h-3.5 mr-1" /> 可用時段
+                          </Button>
                           <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setTeacherToDelete(t.id)}>
                             <Trash2 className="w-3.5 h-3.5" />
                           </Button>
@@ -305,6 +316,16 @@ export function TeacherTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <TeacherAvailabilityDialog
+        open={availabilityTeacher !== null}
+        teacherId={availabilityTeacher?.id ?? null}
+        teacherName={availabilityTeacher?.name ?? ''}
+        semesterId={currentSemesterId}
+        onOpenChange={(open) => {
+          if (!open) setAvailabilityTeacher(null);
+        }}
+      />
     </div>
   );
 }

@@ -9,6 +9,117 @@ namespace Schedule.Api.Services;
 
 public class TimetablePdfService(ScheduleDbContext db)
 {
+    public async Task<byte[]> GenerateAllTeacherTimetablesPdfAsync(int semesterId)
+    {
+        var semester = await db.Semesters.FindAsync(semesterId)
+            ?? throw new InvalidOperationException("Semester not found");
+
+        var teachers = await db.Teachers
+            .OrderBy(t => t.Name)
+            .ToListAsync();
+
+        var periods = await LoadPeriods(semesterId);
+        var activeDays = await LoadActiveSchoolDays(semesterId);
+
+        var slots = await db.TimetableSlots
+            .Include(ts => ts.CourseAssignment).ThenInclude(ca => ca.Course)
+            .Include(ts => ts.CourseAssignment).ThenInclude(ca => ca.Class)
+            .Include(ts => ts.Period)
+            .Where(ts => ts.CourseAssignment.SemesterId == semesterId && ts.CourseAssignment.TeacherId != null)
+            .ToListAsync();
+
+        var pages = teachers.Select(teacher => (Action<ColumnDescriptor>)(col =>
+        {
+            var slotLookup = slots
+                .Where(slot => slot.CourseAssignment.TeacherId == teacher.Id)
+                .ToDictionary(slot => (slot.DayOfWeek, slot.PeriodId));
+
+            var title = $"{semester.SchoolName}{semester.AcademicYear}學年度第{semester.Term}學期教師課表";
+
+            col.Item().PaddingBottom(4).AlignCenter().Text(title).FontSize(16).Bold();
+            col.Item().PaddingBottom(8).AlignCenter().Text($"教師：{teacher.Name}").FontSize(12);
+            col.Item().Table(table => BuildTimetableTable(table, periods, activeDays, slotLookup, (cell, slot) =>
+            {
+                var className = slot.CourseAssignment.Class?.DisplayName ?? "";
+                cell.Padding(3).AlignCenter().Text(text =>
+                {
+                    text.Span(slot.CourseAssignment.Course.Name).Bold();
+                    text.Span($"\n{className}").FontSize(8);
+                });
+            }));
+        })).ToList();
+
+        return CreateTimetableDocument(pages).GeneratePdf();
+    }
+
+    public async Task<byte[]> GenerateAllClassTimetablesPdfAsync(int semesterId)
+    {
+        var semester = await db.Semesters.FindAsync(semesterId)
+            ?? throw new InvalidOperationException("Semester not found");
+
+        var classes = await db.SchoolClasses
+            .Where(c => c.SemesterId == semesterId)
+            .OrderBy(c => c.GradeYear)
+            .ThenBy(c => c.Section)
+            .ToListAsync();
+
+        var homerooms = await db.HomeroomAssignments
+            .Include(h => h.Teacher)
+            .Where(h => h.SemesterId == semesterId)
+            .ToListAsync();
+
+        var periods = await LoadPeriods(semesterId);
+        var activeDays = await LoadActiveSchoolDays(semesterId);
+
+        var slots = await db.TimetableSlots
+            .Include(ts => ts.CourseAssignment).ThenInclude(ca => ca.Course)
+            .Include(ts => ts.CourseAssignment).ThenInclude(ca => ca.Teacher)
+            .Include(ts => ts.Period)
+            .Where(ts => ts.CourseAssignment.SemesterId == semesterId)
+            .ToListAsync();
+
+        var pages = classes.Select(schoolClass => (Action<ColumnDescriptor>)(col =>
+        {
+            var classSlots = slots.Where(slot => slot.CourseAssignment.ClassId == schoolClass.Id).ToList();
+            var slotLookup = classSlots.ToDictionary(slot => (slot.DayOfWeek, slot.PeriodId));
+            var homeroom = homerooms.FirstOrDefault(h => h.ClassId == schoolClass.Id);
+            var homeroomTeacherId = homeroom?.TeacherId;
+            var subjectTeachers = classSlots
+                .Where(slot => slot.CourseAssignment.TeacherId != null
+                               && slot.CourseAssignment.TeacherId != homeroomTeacherId)
+                .Select(slot => new { slot.CourseAssignment.Course.Name, TeacherName = slot.CourseAssignment.Teacher!.Name })
+                .Distinct()
+                .OrderBy(item => item.Name)
+                .ToList();
+
+            var title = $"{semester.SchoolName}{semester.AcademicYear}學年度第{semester.Term}學期班級課表";
+            var homeroomTeacherName = homeroom?.Teacher.Name ?? "";
+
+            col.Item().PaddingBottom(4).AlignCenter().Text(title).FontSize(16).Bold();
+            col.Item().PaddingBottom(8).AlignCenter().Text(text =>
+            {
+                text.Span($"班級：{schoolClass.DisplayName}").FontSize(12);
+                text.Span("　　").FontSize(12);
+                text.Span($"級任導師：{homeroomTeacherName}").FontSize(12);
+            });
+            col.Item().Table(table => BuildTimetableTable(table, periods, activeDays, slotLookup, (cell, slot) =>
+            {
+                cell.Padding(3).AlignCenter().Text(slot.CourseAssignment.Course.Name);
+            }));
+            if (subjectTeachers.Count > 0)
+            {
+                col.Item().PaddingTop(10).Text(text =>
+                {
+                    text.Span("科任教師：").Bold();
+                    var teacherStrings = subjectTeachers.Select(t => $"{t.Name}：{t.TeacherName} 老師");
+                    text.Span(string.Join("　　", teacherStrings));
+                });
+            }
+        })).ToList();
+
+        return CreateTimetableDocument(pages).GeneratePdf();
+    }
+
     public async Task<byte[]> GenerateTeacherTimetablePdfAsync(int semesterId, int teacherId)
     {
         var semester = await db.Semesters.FindAsync(semesterId)
@@ -18,6 +129,7 @@ public class TimetablePdfService(ScheduleDbContext db)
             ?? throw new InvalidOperationException("Teacher not found");
 
         var periods = await LoadPeriods(semesterId);
+        var activeDays = await LoadActiveSchoolDays(semesterId);
 
         var slots = await db.TimetableSlots
             .Include(ts => ts.CourseAssignment).ThenInclude(ca => ca.Course)
@@ -33,7 +145,7 @@ public class TimetablePdfService(ScheduleDbContext db)
         {
             col.Item().PaddingBottom(4).AlignCenter().Text(title).FontSize(16).Bold();
             col.Item().PaddingBottom(8).AlignCenter().Text($"教師：{teacher.Name}").FontSize(12);
-            col.Item().Table(table => BuildTimetableTable(table, periods, slotLookup, (cell, slot) =>
+            col.Item().Table(table => BuildTimetableTable(table, periods, activeDays, slotLookup, (cell, slot) =>
             {
                 var className = slot.CourseAssignment.Class?.DisplayName ?? "";
                 cell.Padding(3).AlignCenter().Text(text =>
@@ -54,6 +166,7 @@ public class TimetablePdfService(ScheduleDbContext db)
             ?? throw new InvalidOperationException("Room not found");
 
         var periods = await LoadPeriods(semesterId);
+        var activeDays = await LoadActiveSchoolDays(semesterId);
 
         var slots = await db.TimetableSlots
             .Include(ts => ts.CourseAssignment).ThenInclude(ca => ca.Course)
@@ -72,7 +185,7 @@ public class TimetablePdfService(ScheduleDbContext db)
         {
             col.Item().PaddingBottom(4).AlignCenter().Text(title).FontSize(16).Bold();
             col.Item().PaddingBottom(8).AlignCenter().Text($"教室：{room.Name}").FontSize(12);
-            col.Item().Table(table => BuildTimetableTable(table, periods, slotLookup, (cell, slot) =>
+            col.Item().Table(table => BuildTimetableTable(table, periods, activeDays, slotLookup, (cell, slot) =>
             {
                 var className = slot.CourseAssignment.Class?.DisplayName ?? "";
                 var teacherName = slot.CourseAssignment.Teacher?.Name ?? "";
@@ -100,6 +213,7 @@ public class TimetablePdfService(ScheduleDbContext db)
             .FirstOrDefaultAsync(h => h.SemesterId == semesterId && h.ClassId == classId);
 
         var periods = await LoadPeriods(semesterId);
+        var activeDays = await LoadActiveSchoolDays(semesterId);
 
         var slots = await db.TimetableSlots
             .Include(ts => ts.CourseAssignment).ThenInclude(ca => ca.Course)
@@ -112,8 +226,9 @@ public class TimetablePdfService(ScheduleDbContext db)
 
         var homeroomTeacherId = homeroom?.TeacherId;
         var subjectTeachers = slots
-            .Where(s => s.CourseAssignment.TeacherId != homeroomTeacherId)
-            .Select(s => new { s.CourseAssignment.Course.Name, TeacherName = s.CourseAssignment.Teacher?.Name ?? "未指定" })
+            .Where(s => s.CourseAssignment.TeacherId != null
+                        && s.CourseAssignment.TeacherId != homeroomTeacherId)
+            .Select(s => new { s.CourseAssignment.Course.Name, TeacherName = s.CourseAssignment.Teacher!.Name })
             .Distinct()
             .OrderBy(x => x.Name)
             .ToList();
@@ -130,7 +245,7 @@ public class TimetablePdfService(ScheduleDbContext db)
                 text.Span("　　").FontSize(12);
                 text.Span($"級任導師：{homeroomTeacherName}").FontSize(12);
             });
-            col.Item().Table(table => BuildTimetableTable(table, periods, slotLookup, (cell, slot) =>
+            col.Item().Table(table => BuildTimetableTable(table, periods, activeDays, slotLookup, (cell, slot) =>
             {
                 cell.Padding(3).AlignCenter().Text(slot.CourseAssignment.Course.Name);
             }));
@@ -149,19 +264,60 @@ public class TimetablePdfService(ScheduleDbContext db)
     private Task<List<Period>> LoadPeriods(int semesterId) =>
         db.Periods.Where(p => p.SemesterId == semesterId).OrderBy(p => p.StartTime).ToListAsync();
 
+    private async Task<List<int>> LoadActiveSchoolDays(int semesterId)
+    {
+        var activeDays = await db.SchoolDays
+            .Where(day => day.SemesterId == semesterId && day.IsActive)
+            .OrderBy(day => day.DayOfWeek)
+            .Select(day => day.DayOfWeek)
+            .ToListAsync();
+
+        return activeDays.Count > 0 ? activeDays : [1, 2, 3, 4, 5];
+    }
+
     private static IDocument CreateTimetablePage(Action<ColumnDescriptor> buildContent) =>
-        Document.Create(container => container.Page(page =>
+        CreateTimetableDocument([buildContent]);
+
+    private static IDocument CreateTimetableDocument(IEnumerable<Action<ColumnDescriptor>> pages) =>
+        Document.Create(container =>
         {
-            page.Size(PageSizes.A4);
-            page.MarginHorizontal(1.5f, Unit.Centimetre);
-            page.MarginVertical(1.2f, Unit.Centimetre);
-            page.DefaultTextStyle(x => x.FontFamily("Microsoft JhengHei").FontSize(10));
-            page.Content().Column(buildContent);
-        }));
+            var pageBuilders = pages.ToList();
+
+            if (pageBuilders.Count == 0)
+            {
+                pageBuilders.Add(col =>
+                {
+                    col.Item().AlignCenter().Text("無資料").FontSize(14);
+                });
+            }
+
+            foreach (var buildContent in pageBuilders)
+            {
+                container.Page(page =>
+                {
+                    page.Size(PageSizes.A4);
+                    page.MarginHorizontal(1.5f, Unit.Centimetre);
+                    page.MarginVertical(1.2f, Unit.Centimetre);
+                    // Use a Traditional-Chinese font with cross-platform fallbacks so Linux/macOS/Docker hosts
+                    // (which lack Microsoft JhengHei) render CJK glyphs instead of tofu boxes.
+                    page.DefaultTextStyle(x => x
+                        .FontFamily(
+                            "Microsoft JhengHei",
+                            "Noto Sans CJK TC",
+                            "Noto Sans TC",
+                            "PingFang TC",
+                            "WenQuanYi Zen Hei",
+                            "Microsoft YaHei")
+                        .FontSize(10));
+                    page.Content().Column(buildContent);
+                });
+            }
+        });
 
     private static void BuildTimetableTable(
         TableDescriptor table,
         List<Period> periods,
+        List<int> activeDays,
         Dictionary<(int, int), TimetableSlot> slotLookup,
         Action<IContainer, TimetableSlot> renderSlotCell)
     {
@@ -169,11 +325,8 @@ public class TimetablePdfService(ScheduleDbContext db)
         {
             cd.ConstantColumn(75);
             cd.ConstantColumn(35);
-            cd.RelativeColumn();
-            cd.RelativeColumn();
-            cd.RelativeColumn();
-            cd.RelativeColumn();
-            cd.RelativeColumn();
+            foreach (var _ in activeDays)
+                cd.RelativeColumn();
         });
 
         table.Header(header =>
@@ -182,7 +335,7 @@ public class TimetablePdfService(ScheduleDbContext db)
                 .Text("時　間").FontColor(Colors.White).Bold();
             header.Cell().Border(0.5f).Background("#4338ca").Padding(4).AlignCenter()
                 .Text("節次").FontColor(Colors.White).Bold();
-            foreach (var day in new[] { "一", "二", "三", "四", "五" })
+            foreach (var day in activeDays.Select(GetDayLabel))
             {
                 header.Cell().Border(0.5f).Background("#4338ca").Padding(4).AlignCenter()
                     .Text(day).FontColor(Colors.White).Bold();
@@ -200,7 +353,7 @@ public class TimetablePdfService(ScheduleDbContext db)
                     .Padding(3).AlignCenter().Text(timeStr).FontSize(8);
                 table.Cell().Row(rowIndex).Column(2).Border(0.5f).Background("#eef2ff")
                     .Padding(3).AlignCenter().Text("");
-                table.Cell().Row(rowIndex).Column(3).ColumnSpan(5).Border(0.5f).Background("#eef2ff")
+                table.Cell().Row(rowIndex).Column(3).ColumnSpan((uint)activeDays.Count).Border(0.5f).Background("#eef2ff")
                     .Padding(3).AlignCenter().Text(period.ActivityName ?? "").FontSize(9).Italic();
             }
             else
@@ -210,10 +363,11 @@ public class TimetablePdfService(ScheduleDbContext db)
                 table.Cell().Row(rowIndex).Column(2).Border(0.5f)
                     .Padding(3).AlignCenter().Text(period.PeriodNumber.ToString()).Bold();
 
-                for (int d = 1; d <= 5; d++)
+                for (var dayIndex = 0; dayIndex < activeDays.Count; dayIndex++)
                 {
-                    var cell = table.Cell().Row(rowIndex).Column((uint)(d + 2)).Border(0.5f);
-                    if (slotLookup.TryGetValue((d, period.Id), out var slot))
+                    var dayOfWeek = activeDays[dayIndex];
+                    var cell = table.Cell().Row(rowIndex).Column((uint)(dayIndex + 3)).Border(0.5f);
+                    if (slotLookup.TryGetValue((dayOfWeek, period.Id), out var slot))
                         renderSlotCell(cell, slot);
                     else
                         cell.Padding(3).Text("");
@@ -223,4 +377,16 @@ public class TimetablePdfService(ScheduleDbContext db)
             rowIndex++;
         }
     }
+
+    private static string GetDayLabel(int dayOfWeek) => dayOfWeek switch
+    {
+        1 => "一",
+        2 => "二",
+        3 => "三",
+        4 => "四",
+        5 => "五",
+        6 => "六",
+        7 => "日",
+        _ => dayOfWeek.ToString()
+    };
 }

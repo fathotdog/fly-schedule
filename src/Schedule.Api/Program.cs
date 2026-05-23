@@ -50,6 +50,7 @@ app.MapSchoolClassEndpoints();
 app.MapSchoolDayEndpoints();
 app.MapStaffTitleEndpoints();
 app.MapTeacherEndpoints();
+app.MapTeacherAvailabilityEndpoints();
 app.MapCourseEndpoints();
 app.MapCourseAssignmentEndpoints();
 app.MapPeriodEndpoints();

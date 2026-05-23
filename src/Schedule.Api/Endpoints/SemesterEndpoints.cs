@@ -55,17 +55,22 @@ public static class SemesterEndpoints
                     db.SchoolDays.Add(new SchoolDay { SemesterId = semester.Id, DayOfWeek = d.DayOfWeek, IsActive = d.IsActive });
 
                 // Copy Periods
-                var srcPeriods = await db.Periods.Where(x => x.SemesterId == srcId).ToListAsync();
-                foreach (var p in srcPeriods)
-                    db.Periods.Add(new Period
-                    {
-                        SemesterId = semester.Id,
-                        PeriodNumber = p.PeriodNumber,
-                        StartTime = p.StartTime,
-                        EndTime = p.EndTime,
-                        IsActivity = p.IsActivity,
-                        ActivityName = p.ActivityName
-                    });
+                var srcPeriods = await db.Periods
+                    .Where(x => x.SemesterId == srcId)
+                    .OrderBy(x => x.StartTime)
+                    .ThenBy(x => x.PeriodNumber)
+                    .ThenBy(x => x.Id)
+                    .ToListAsync();
+                var newPeriods = srcPeriods.Select(p => new Period
+                {
+                    SemesterId = semester.Id,
+                    PeriodNumber = p.PeriodNumber,
+                    StartTime = p.StartTime,
+                    EndTime = p.EndTime,
+                    IsActivity = p.IsActivity,
+                    ActivityName = p.ActivityName
+                }).ToList();
+                db.Periods.AddRange(newPeriods);
 
                 // Copy SchoolClasses — need new IDs for remapping
                 var srcClasses = await db.SchoolClasses.Where(x => x.SemesterId == srcId).ToListAsync();
@@ -79,6 +84,10 @@ public static class SemesterEndpoints
                 db.SchoolClasses.AddRange(newClasses);
                 await db.SaveChangesAsync(); // flush to get new IDs
 
+                var periodIdMap = srcPeriods
+                    .Zip(newPeriods, (source, target) => new { OldId = source.Id, NewId = target.Id })
+                    .ToDictionary(x => x.OldId, x => x.NewId);
+
                 // Build old → new class ID map by GradeYear+Section
                 var classIdMap = srcClasses
                     .Join(newClasses,
@@ -88,19 +97,30 @@ public static class SemesterEndpoints
                     .ToDictionary(x => x.OldId, x => x.NewId);
 
                 // Copy CourseAssignments
-                var srcAssignments = await db.CourseAssignments.Where(x => x.SemesterId == srcId).ToListAsync();
-                foreach (var a in srcAssignments)
-                {
-                    if (!classIdMap.TryGetValue(a.ClassId, out var newClassId)) continue;
-                    db.CourseAssignments.Add(new CourseAssignment
+                var srcAssignments = await db.CourseAssignments
+                    .Where(x => x.SemesterId == srcId)
+                    .OrderBy(x => x.Id)
+                    .ToListAsync();
+                var assignmentPairs = srcAssignments
+                    .Where(a => classIdMap.ContainsKey(a.ClassId))
+                    .Select(a => new
                     {
-                        SemesterId = semester.Id,
-                        CourseId = a.CourseId,
-                        TeacherId = a.TeacherId,
-                        ClassId = newClassId,
-                        WeeklyPeriods = a.WeeklyPeriods
-                    });
-                }
+                        Source = a,
+                        Target = new CourseAssignment
+                        {
+                            SemesterId = semester.Id,
+                            CourseId = a.CourseId,
+                            TeacherId = a.TeacherId,
+                            ClassId = classIdMap[a.ClassId],
+                            WeeklyPeriods = a.WeeklyPeriods
+                        }
+                    })
+                    .ToList();
+                db.CourseAssignments.AddRange(assignmentPairs.Select(x => x.Target));
+                await db.SaveChangesAsync();
+
+                var courseAssignmentIdMap = assignmentPairs
+                    .ToDictionary(x => x.Source.Id, x => x.Target.Id);
 
                 // Copy HomeroomAssignments
                 var srcHomerooms = await db.HomeroomAssignments.Where(x => x.SemesterId == srcId).ToListAsync();
@@ -114,6 +134,59 @@ public static class SemesterEndpoints
                         ClassId = newClassId
                     });
                 }
+
+                // Copy TimetableSlots
+                var srcSlots = await db.TimetableSlots
+                    .Include(ts => ts.RoomBooking)
+                    .Where(ts => ts.CourseAssignment.SemesterId == srcId)
+                    .OrderBy(ts => ts.Id)
+                    .ToListAsync();
+                var slotPairs = srcSlots
+                    .Where(ts => courseAssignmentIdMap.ContainsKey(ts.CourseAssignmentId) && periodIdMap.ContainsKey(ts.PeriodId))
+                    .Select(ts => new
+                    {
+                        Source = ts,
+                        Target = new TimetableSlot
+                        {
+                            CourseAssignmentId = courseAssignmentIdMap[ts.CourseAssignmentId],
+                            DayOfWeek = ts.DayOfWeek,
+                            PeriodId = periodIdMap[ts.PeriodId],
+                            IsLocked = ts.IsLocked
+                        }
+                    })
+                    .ToList();
+                db.TimetableSlots.AddRange(slotPairs.Select(x => x.Target));
+                await db.SaveChangesAsync();
+
+                var timetableSlotIdMap = slotPairs
+                    .ToDictionary(x => x.Source.Id, x => x.Target.Id);
+
+                // Copy RoomBookings
+                var newRoomBookings = srcSlots
+                    .Where(ts => ts.RoomBooking is not null && timetableSlotIdMap.ContainsKey(ts.Id))
+                    .Select(ts => new RoomBooking
+                    {
+                        TimetableSlotId = timetableSlotIdMap[ts.Id],
+                        SpecialRoomId = ts.RoomBooking!.SpecialRoomId
+                    })
+                    .ToList();
+                db.RoomBookings.AddRange(newRoomBookings);
+
+                // Copy TeacherUnavailability — remap PeriodId via periodIdMap
+                var srcUnavailabilities = await db.TeacherUnavailabilities
+                    .Where(u => u.SemesterId == srcId)
+                    .ToListAsync();
+                var newUnavailabilities = srcUnavailabilities
+                    .Where(u => periodIdMap.ContainsKey(u.PeriodId))
+                    .Select(u => new TeacherUnavailability
+                    {
+                        SemesterId = semester.Id,
+                        TeacherId = u.TeacherId,
+                        DayOfWeek = u.DayOfWeek,
+                        PeriodId = periodIdMap[u.PeriodId]
+                    })
+                    .ToList();
+                db.TeacherUnavailabilities.AddRange(newUnavailabilities);
 
                 await db.SaveChangesAsync();
             }

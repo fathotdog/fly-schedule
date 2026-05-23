@@ -17,6 +17,7 @@ public class ScheduleDbContext(DbContextOptions<ScheduleDbContext> options) : Db
     public DbSet<SpecialRoom> SpecialRooms => Set<SpecialRoom>();
     public DbSet<TimetableSlot> TimetableSlots => Set<TimetableSlot>();
     public DbSet<RoomBooking> RoomBookings => Set<RoomBooking>();
+    public DbSet<TeacherUnavailability> TeacherUnavailabilities => Set<TeacherUnavailability>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -52,6 +53,8 @@ public class ScheduleDbContext(DbContextOptions<ScheduleDbContext> options) : Db
             // 只在 TeacherId 有值時套用唯一約束，NULL 值不參與唯一索引
             e.HasIndex(ca => new { ca.SemesterId, ca.CourseId, ca.ClassId, ca.TeacherId }).IsUnique()
                 .HasFilter("\"TeacherId\" IS NOT NULL");
+            e.HasIndex(ca => new { ca.SemesterId, ca.TeacherId });
+            e.HasIndex(ca => new { ca.SemesterId, ca.ClassId });
             e.HasOne(ca => ca.Semester).WithMany(s => s.CourseAssignments).HasForeignKey(ca => ca.SemesterId);
             e.HasOne(ca => ca.Course).WithMany(c => c.CourseAssignments).HasForeignKey(ca => ca.CourseId);
             e.HasOne(ca => ca.Teacher).WithMany(t => t.CourseAssignments).HasForeignKey(ca => ca.TeacherId).IsRequired(false);
@@ -79,6 +82,7 @@ public class ScheduleDbContext(DbContextOptions<ScheduleDbContext> options) : Db
         modelBuilder.Entity<TimetableSlot>(e =>
         {
             e.HasIndex(ts => new { ts.CourseAssignmentId, ts.DayOfWeek, ts.PeriodId }).IsUnique();
+            e.HasIndex(ts => new { ts.DayOfWeek, ts.PeriodId });
             e.HasOne(ts => ts.CourseAssignment).WithMany(ca => ca.TimetableSlots).HasForeignKey(ts => ts.CourseAssignmentId);
             e.HasOne(ts => ts.Period).WithMany(p => p.TimetableSlots).HasForeignKey(ts => ts.PeriodId);
         });
@@ -87,8 +91,21 @@ public class ScheduleDbContext(DbContextOptions<ScheduleDbContext> options) : Db
         modelBuilder.Entity<RoomBooking>(e =>
         {
             e.HasIndex(rb => rb.TimetableSlotId).IsUnique();
+            e.HasIndex(rb => rb.SpecialRoomId);
             e.HasOne(rb => rb.TimetableSlot).WithOne(ts => ts.RoomBooking).HasForeignKey<RoomBooking>(rb => rb.TimetableSlotId);
             e.HasOne(rb => rb.SpecialRoom).WithMany(sr => sr.RoomBookings).HasForeignKey(rb => rb.SpecialRoomId);
+        });
+
+        // TeacherUnavailability
+        modelBuilder.Entity<TeacherUnavailability>(e =>
+        {
+            e.HasIndex(u => new { u.SemesterId, u.TeacherId, u.DayOfWeek, u.PeriodId }).IsUnique();
+            e.HasIndex(u => new { u.SemesterId, u.TeacherId });
+            e.HasOne(u => u.Semester).WithMany().HasForeignKey(u => u.SemesterId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(u => u.Teacher).WithMany(t => t.Unavailabilities).HasForeignKey(u => u.TeacherId);
+            // Restrict: an admin must explicitly clear teacher unavailability before deleting a Period,
+            // so we don't silently lose availability config when a period is removed.
+            e.HasOne(u => u.Period).WithMany().HasForeignKey(u => u.PeriodId).OnDelete(DeleteBehavior.Restrict);
         });
 
         SeedData(modelBuilder);

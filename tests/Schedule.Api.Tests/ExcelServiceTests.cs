@@ -103,4 +103,43 @@ public class ExcelServiceTests
         Assert.Null(assignment.TeacherId);
         Assert.Equal(5, assignment.WeeklyPeriods);
     }
+
+    [Fact]
+    public async Task ExportAllClassTimetables_CreatesWorksheetPerClass()
+    {
+        var (db, semester, schoolClass, course) = await SetupAsync();
+        var teacher = new Teacher { Name = "王老師", StaffTitleId = 1, MaxWeeklyPeriods = 20 };
+        var period = new Period { SemesterId = semester.Id, PeriodNumber = 1, StartTime = new TimeOnly(8, 30), EndTime = new TimeOnly(9, 15) };
+        db.AddRange(teacher, period);
+        db.SchoolDays.Add(new SchoolDay { SemesterId = semester.Id, DayOfWeek = 1, IsActive = true });
+        await db.SaveChangesAsync();
+
+        var assignment = new CourseAssignment
+        {
+            SemesterId = semester.Id,
+            CourseId = course.Id,
+            TeacherId = teacher.Id,
+            ClassId = schoolClass.Id,
+            WeeklyPeriods = 4
+        };
+        db.CourseAssignments.Add(assignment);
+        await db.SaveChangesAsync();
+
+        db.TimetableSlots.Add(new TimetableSlot
+        {
+            CourseAssignmentId = assignment.Id,
+            DayOfWeek = 1,
+            PeriodId = period.Id
+        });
+        await db.SaveChangesAsync();
+
+        var svc = new ExcelService(db);
+        var bytes = await svc.ExportAllClassTimetablesAsync(semester.Id);
+
+        using var workbook = new XLWorkbook(new MemoryStream(bytes));
+        Assert.True(workbook.Worksheets.Contains(schoolClass.DisplayName));
+        var worksheet = workbook.Worksheet(schoolClass.DisplayName);
+        Assert.Equal("週一", worksheet.Cell(4, 3).GetString());
+        Assert.Contains(course.Name, worksheet.Cell(5, 3).GetString());
+    }
 }
