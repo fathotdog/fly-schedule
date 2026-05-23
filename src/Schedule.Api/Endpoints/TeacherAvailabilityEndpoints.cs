@@ -38,15 +38,24 @@ public static class TeacherAvailabilityEndpoints
             // Treat missing/null body as an empty replacement set.
             slots ??= [];
 
-            // Validate DayOfWeek against the semester's active SchoolDays.
-            // If no active SchoolDays are configured, fall back to Mon-Fri so existing semesters keep working.
+            // Validate DayOfWeek against the semester's active SchoolDays — but also accept
+            // any DayOfWeek that already has a saved row in the DB for this teacher+semester.
+            // This prevents the lockout where an admin disables a SchoolDay after rows exist
+            // referencing it, leaving the user unable to edit until the orphan rows are purged.
             var activeDays = await db.SchoolDays
                 .Where(d => d.SemesterId == semesterId && d.IsActive)
                 .Select(d => d.DayOfWeek)
                 .ToListAsync();
             if (activeDays.Count == 0) activeDays = [1, 2, 3, 4, 5];
 
-            if (slots.Any(slot => !activeDays.Contains(slot.DayOfWeek)))
+            var legacyDays = await db.TeacherUnavailabilities
+                .Where(u => u.SemesterId == semesterId && u.TeacherId == teacherId)
+                .Select(u => u.DayOfWeek)
+                .Distinct()
+                .ToListAsync();
+            var allowedDays = activeDays.Union(legacyDays).ToHashSet();
+
+            if (slots.Any(slot => !allowedDays.Contains(slot.DayOfWeek)))
             {
                 return Results.BadRequest(new
                 {
@@ -57,15 +66,17 @@ public static class TeacherAvailabilityEndpoints
             var normalizedSlots = slots.Distinct().ToList();
             var periodIds = normalizedSlots.Select(slot => slot.PeriodId).Distinct().ToList();
 
-            // Validate that every PeriodId belongs to THIS semester (not a different one).
+            // Validate that every PeriodId belongs to THIS semester AND is not an activity
+            // period (lunch/朝會 etc.) — those rows would be orphan data since the conflict
+            // service short-circuits IsActivity periods before checking unavailability.
             var validPeriodIds = await db.Periods
-                .Where(p => p.SemesterId == semesterId && periodIds.Contains(p.Id))
+                .Where(p => p.SemesterId == semesterId && !p.IsActivity && periodIds.Contains(p.Id))
                 .Select(p => p.Id)
                 .ToListAsync();
 
             if (periodIds.Except(validPeriodIds).Any())
             {
-                return Results.BadRequest(new { message = "包含不存在或不屬於此學期的節次" });
+                return Results.BadRequest(new { message = "包含不存在、不屬於此學期、或為活動節次的節次" });
             }
 
             // Replace within this semester only — preserves other semesters' rows for this teacher.

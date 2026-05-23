@@ -35,7 +35,15 @@ export const useScheduleStore = create<ScheduleState>()(
       activeTab: 'dashboard',
       sidebarCollapsed: false,
       timetableViewMode: 'class',
-      setCurrentSemesterId: (id, name) => set({ currentSemesterId: id, currentSemesterName: name || null, selectedClassId: null }),
+      setCurrentSemesterId: (id, name) => set({
+        currentSemesterId: id,
+        currentSemesterName: name || null,
+        // Reset every semester-scoped selection so stale IDs don't leak across semesters.
+        selectedClassId: null,
+        selectedTeacherId: null,
+        selectedCourseAssignmentId: null,
+        selectedSpecialRoomId: null,
+      }),
       setSelectedClassId: (id) => set({ selectedClassId: id, selectedCourseAssignmentId: null, selectedSpecialRoomId: null }),
       setSelectedCourseAssignmentId: (id) => set({ selectedCourseAssignmentId: id }),
       setSelectedTeacherId: (id) => set({ selectedTeacherId: id, selectedSpecialRoomId: null }),

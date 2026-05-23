@@ -224,6 +224,10 @@ public class ExcelService(ScheduleDbContext db)
 
         int created = 0, updated = 0, skipped = 0;
 
+        // Track CourseAssignment Ids we've already touched in this import so that
+        // a second row matching the same row doesn't silently overwrite the first.
+        var touchedAssignmentIds = new HashSet<int>();
+
         foreach (var row in ws.RowsUsed().Skip(1))
         {
             var className = row.Cell(1).GetString().Trim();
@@ -260,6 +264,14 @@ public class ExcelService(ScheduleDbContext db)
 
             if (existing is not null)
             {
+                // Second+ row targeting an already-touched assignment in this import would
+                // silently overwrite earlier data — skip it instead so the user can see the
+                // duplicate count in the result and fix the spreadsheet.
+                if (existing.Id != 0 && !touchedAssignmentIds.Add(existing.Id))
+                {
+                    skipped++;
+                    continue;
+                }
                 existing.TeacherId = teacher?.Id;
                 existing.WeeklyPeriods = weeklyPeriods;
                 updated++;

@@ -25,6 +25,7 @@ export function TeacherAvailabilityDialog({
 }: TeacherAvailabilityDialogProps) {
   const qc = useQueryClient();
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const [seeded, setSeeded] = useState(false);
 
   const { data: periods = [], isLoading: isPeriodsLoading } = useQuery({
     queryKey: ['periods', semesterId],
@@ -57,13 +58,19 @@ export function TeacherAvailabilityDialog({
     [schoolDays]
   );
 
-  // Seed selection only on open (not on every availability refetch) so an
-  // in-flight focus/invalidation refetch can't silently wipe unsaved edits.
+  // Seed selectedKeys exactly once per dialog-open session — after the availability
+  // query has loaded. The `seeded` guard prevents a focus/invalidation refetch from
+  // wiping unsaved edits, while still applying the initial server state once it arrives.
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setSeeded(false);
+      return;
+    }
+    if (seeded) return;
+    if (isAvailabilityLoading) return;
     setSelectedKeys(new Set(availability.map(item => `${item.dayOfWeek}-${item.periodId}`)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, teacherId, semesterId]);
+    setSeeded(true);
+  }, [open, seeded, isAvailabilityLoading, availability]);
 
   const saveMut = useMutation({
     mutationFn: async () => {

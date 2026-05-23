@@ -317,7 +317,13 @@ export function TimetableGrid() {
                       hasCellWarning && !isDropTarget && 'bg-amber-500/[0.04]'
                     )}
                     onDragOver={(e) => {
-                      if (draggedSlot && (!slot || slot.id !== draggedSlot.id) && !slot?.isLocked) e.preventDefault();
+                      if (!draggedSlot) return;
+                      if (slot && slot.id === draggedSlot.id) return;
+                      if (slot?.isLocked) return;
+                      // Block drops onto cells the UI has marked as unavailable / room-booked
+                      // so users don't trigger a doomed server roundtrip with optimistic flicker.
+                      if (!slot && (isUnavailable || isRoomBooked)) return;
+                      e.preventDefault();
                     }}
                     onDragEnter={() => {
                       if (!draggedSlot || (slot && slot.id === draggedSlot.id)) return;
@@ -356,7 +362,7 @@ export function TimetableGrid() {
                     onDrop={(e) => {
                       e.preventDefault();
                       resetDragState();
-                      if (draggedSlot && !slot) {
+                      if (draggedSlot && !slot && !isUnavailable && !isRoomBooked) {
                         moveMut.mutate({ slotId: draggedSlot.id, dayOfWeek: day, periodId: period.id });
                       } else if (draggedSlot && slot && slot.id !== draggedSlot.id && !slot.isLocked) {
                         swapMut.mutate({ slotId1: draggedSlot.id, slotId2: slot.id });
@@ -511,7 +517,16 @@ const EmptyCell = memo(function EmptyCell({ canAdd, onAdd, hasWarning, warningMe
       </div>
     );
   }
-  if (!canAdd) return <div className="h-full" />;
+  if (!canAdd) {
+    // Surface the unavailability reason on hover even when canAdd is false,
+    // so greyed cells aren't mysteriously disabled.
+    return (
+      <div
+        className="h-full"
+        title={isUnavailable ? '教師標記為不可排時段' : undefined}
+      />
+    );
+  }
   return (
     <div
       className={cn(

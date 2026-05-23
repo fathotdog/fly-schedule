@@ -267,13 +267,15 @@ public class TimetableService(ScheduleDbContext db, ConflictDetectionService con
             slot2.DayOfWeek,
             slot2.PeriodId,
             slot1.RoomBooking?.SpecialRoomId,
-            excludeSlotIds: excludeIds);
+            excludeSlotIds: excludeIds,
+            skipUnavailabilityIfTeacherAlreadyHere: true);
         var conflicts2 = await conflictService.CheckConflictsAsync(
             slot2.CourseAssignmentId,
             slot1.DayOfWeek,
             slot1.PeriodId,
             slot2.RoomBooking?.SpecialRoomId,
-            excludeSlotIds: excludeIds);
+            excludeSlotIds: excludeIds,
+            skipUnavailabilityIfTeacherAlreadyHere: true);
 
         return conflicts1.Concat(conflicts2).ToList();
     }

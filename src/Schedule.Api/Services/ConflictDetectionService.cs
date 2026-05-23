@@ -7,7 +7,8 @@ namespace Schedule.Api.Services;
 public class ConflictDetectionService(ScheduleDbContext db)
 {
     public async Task<List<ConflictInfo>> CheckConflictsAsync(
-        int courseAssignmentId, int dayOfWeek, int periodId, int? specialRoomId, int[]? excludeSlotIds = null)
+        int courseAssignmentId, int dayOfWeek, int periodId, int? specialRoomId,
+        int[]? excludeSlotIds = null, bool skipUnavailabilityIfTeacherAlreadyHere = false)
     {
         var conflicts = new List<ConflictInfo>();
 
@@ -73,7 +74,22 @@ public class ConflictDetectionService(ScheduleDbContext db)
 
             if (unavailable)
             {
-                conflicts.Add(new ConflictInfo("TeacherUnavailable", "教師標記為不可排時段"));
+                // Swap context: if the moving teacher already has a slot at this position
+                // (i.e., an excluded slot is here and owned by the same teacher), the
+                // unavailability rule was already being violated before the swap — don't
+                // block a no-op-violation rearrangement.
+                var teacherAlreadyHere = skipUnavailabilityIfTeacherAlreadyHere
+                    && excludeSlotIds is not null
+                    && await db.TimetableSlots.AnyAsync(ts =>
+                        excludeSlotIds.Contains(ts.Id)
+                        && ts.CourseAssignment.TeacherId == assignment.TeacherId.Value
+                        && ts.DayOfWeek == dayOfWeek
+                        && ts.PeriodId == periodId);
+
+                if (!teacherAlreadyHere)
+                {
+                    conflicts.Add(new ConflictInfo("TeacherUnavailable", "教師標記為不可排時段"));
+                }
             }
         }
 

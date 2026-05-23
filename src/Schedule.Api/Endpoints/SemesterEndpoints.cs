@@ -270,6 +270,15 @@ public static class SemesterEndpoints
         {
             var semester = await db.Semesters.FindAsync(id);
             if (semester is null) return Results.NotFound();
+
+            // Pre-delete TeacherUnavailability rows for this semester to avoid the
+            // diamond-cascade race: Semester→Period (Cascade) vs Period→TeacherUnavailability
+            // (Restrict). If SQLite happens to cascade Period first, the Restrict FK aborts
+            // the whole DELETE.
+            await db.TeacherUnavailabilities
+                .Where(u => u.SemesterId == id)
+                .ExecuteDeleteAsync();
+
             db.Semesters.Remove(semester);
             await db.SaveChangesAsync();
             return Results.NoContent();

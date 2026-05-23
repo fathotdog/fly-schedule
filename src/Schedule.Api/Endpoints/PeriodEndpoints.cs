@@ -52,6 +52,19 @@ public static class PeriodEndpoints
         {
             var period = await db.Periods.FirstOrDefaultAsync(p => p.Id == id && p.SemesterId == semesterId);
             if (period is null) return Results.NotFound();
+
+            // TeacherUnavailability.Period FK is Restrict to protect against accidental
+            // erasure of teacher availability config. Surface as 409 with an actionable message
+            // instead of letting DbUpdateException bubble up as 500.
+            var unavailabilityCount = await db.TeacherUnavailabilities.CountAsync(u => u.PeriodId == id);
+            if (unavailabilityCount > 0)
+            {
+                return Results.Conflict(new
+                {
+                    message = $"無法刪除此節次：仍有 {unavailabilityCount} 筆教師不可排時段設定參照此節次，請先清除相關設定。"
+                });
+            }
+
             db.Periods.Remove(period);
             await db.SaveChangesAsync();
             return Results.NoContent();
