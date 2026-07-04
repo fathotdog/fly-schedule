@@ -10,3 +10,12 @@ src/Schedule.Api/bin/Release/
 tests/Schedule.Api.Tests/bin/Release/
 src/Schedule.Api/schedule.db-shm
 src/Schedule.Api/schedule.db-wal
+
+# HyperFrames / agent skills (installed via `npx skills add`)
+.agents/
+.claude/skills/
+skills-lock.json
+
+# 打包產物（由 build-release.ps1 生成）
+release/
+src/Schedule.Api/wwwroot/
